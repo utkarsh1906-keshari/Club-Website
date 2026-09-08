@@ -17,7 +17,8 @@ import {
   ShieldCheck,
   Zap,
   ArrowUpRight,
-  Compass
+  Compass,
+  GitBranch
 } from 'lucide-react';
 import './Domains.css';
 
@@ -391,10 +392,10 @@ export default function Domains() {
                 </p>
               </div>
 
-              <Link to="/projects" className="view-all-projects-btn">
-                <span>All Club Projects</span>
-                <ArrowUpRight size={16} />
-              </Link>
+              <div className="domain-projects-count-badge">
+                <FolderGit2 size={16} />
+                <span>{activeDomain.projects.length} Flagship Systems</span>
+              </div>
             </div>
 
             <div className="domain-projects-grid">
@@ -421,10 +422,10 @@ export default function Domains() {
                       ))}
                     </div>
 
-                    <Link to={proj.link} className="project-card-cta">
-                      <span>Showcase</span>
-                      <ChevronRight size={14} />
-                    </Link>
+                    <div className="project-division-badge">
+                      <GitBranch size={13} />
+                      <span>Domain Prototype</span>
+                    </div>
                   </div>
                 </div>
               ))}

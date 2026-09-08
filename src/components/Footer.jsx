@@ -44,10 +44,10 @@ export default function Footer() {
           <div className="footer-links-col">
             <h4 className="footer-heading">Technical Domains</h4>
             <ul className="footer-links">
-              <li><Link to="/domains">AI & Machine Learning</Link></li>
-              <li><Link to="/domains">VLSI & Hardware Systems</Link></li>
-              <li><Link to="/domains">Robotics & Connected IoT</Link></li>
-              <li><Link to="/domains">Drone & UAV Technology</Link></li>
+              <li><Link to="/domains?domain=ai-ml">AI & Machine Learning</Link></li>
+              <li><Link to="/domains?domain=vlsi">VLSI & Hardware Systems</Link></li>
+              <li><Link to="/domains?domain=robotics-iot">Robotics & Connected IoT</Link></li>
+              <li><Link to="/domains?domain=drone-tech">Drone & UAV Technology</Link></li>
             </ul>
           </div>
 
@@ -55,7 +55,7 @@ export default function Footer() {
           <div className="footer-links-col">
             <h4 className="footer-heading">Platform</h4>
             <ul className="footer-links">
-              <li><Link to="/projects">Project Showcase</Link></li>
+              <li><Link to="/domains">Domains &amp; Projects</Link></li>
               <li><Link to="/events">Events & Workshops</Link></li>
               <li><Link to="/team">Club Leadership & Members</Link></li>
               <li><Link to="/gallery">Media Gallery</Link></li>

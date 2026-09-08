@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 
 // Layouts
@@ -10,7 +10,6 @@ import AdminLayout from './layouts/AdminLayout';
 import Home from './pages/Home';
 import About from './pages/About';
 import Domains from './pages/Domains';
-import Projects from './pages/Projects';
 import Events from './pages/Events';
 import Team from './pages/Team';
 import Gallery from './pages/Gallery';
@@ -36,7 +35,8 @@ function App() {
             <Route index element={<Home />} />
             <Route path="about" element={<About />} />
             <Route path="domains" element={<Domains />} />
-            <Route path="projects" element={<Projects />} />
+            {/* Projects are now integrated directly inside Domains */}
+            <Route path="projects" element={<Navigate to="/domains" replace />} />
             <Route path="events" element={<Events />} />
             <Route path="team" element={<Team />} />
             <Route path="gallery" element={<Gallery />} />
