@@ -1,61 +1,79 @@
 import React, { useState } from 'react';
-import { Camera, Image as ImageIcon, X, Maximize2 } from 'lucide-react';
+import { 
+  X, 
+  Maximize2, 
+  Calendar 
+} from 'lucide-react';
 import './Gallery.css';
 
 export default function Gallery() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [selectedImage, setSelectedImage] = useState(null);
 
-  const categories = ['All', 'Drones', 'Robotics', 'AI/ML', 'VLSI', 'Events', 'Workshops'];
+  const categories = [
+    { id: 'All', label: 'All' },
+    { id: 'Drones', label: 'Drones' },
+    { id: 'Robotics', label: 'Robotics' },
+    { id: 'AI/ML', label: 'AI/ML' },
+    { id: 'VLSI', label: 'VLSI' },
+    { id: 'Events', label: 'Events' },
+    { id: 'Workshops', label: 'Workshops' }
+  ];
 
   const galleryItems = [
     {
       id: 1,
-      title: 'AeroHawk Hexacopter Field Testing',
+      title: 'FPV Racing Quad Assembly & Flight Calibration',
       category: 'Drones',
-      date: 'SEPTEMBER 2026',
-      desc: 'Outdoor GPS waypoint flight calibration and live telemetry link verification.',
-      aspectRatio: 'landscape'
+      date: 'NOVEMBER 2026',
+      desc: 'Hands-on carbon-fiber racing quadcopter fabrication, Betaflight motor configuration, and line-of-sight test hovers.',
+      image: '/abes/fpv-assembly.webp',
+      badge: 'Hardware Build'
     },
     {
       id: 2,
-      title: 'Titan Quadruped SLAM Mapping Lab Session',
-      category: 'Robotics',
-      date: 'AUGUST 2026',
-      desc: 'Indoor obstacle traversal test run using 3D point-cloud LiDAR sensor fusion.',
-      aspectRatio: 'landscape'
+      title: 'RobotoHack 48-Hour National Hackathon',
+      category: 'Events',
+      date: 'JANUARY 2027',
+      desc: 'Inter-collegiate hardware marathon bringing together engineering squads to construct autonomous rovers and drone payloads.',
+      image: '/abes/robotohack.webp',
+      badge: 'National Hackathon'
     },
     {
       id: 3,
-      title: 'FPGA Hardware Acceleration Vivado Demo',
+      title: 'Circuit Bid Hardware & Telemetry Competition',
       category: 'VLSI',
-      date: 'JULY 2026',
-      desc: 'Real-time oscilloscope validation of RTL telemetry filter on Artix-7 development board.',
-      aspectRatio: 'portrait'
+      date: 'OCTOBER 2026',
+      desc: 'Real-time schematic debugging, component bidding, and oscilloscope telemetry validation under competitive time limits.',
+      image: '/abes/circuit-bid.webp',
+      badge: 'Hardware Challenge'
     },
     {
       id: 4,
-      title: 'Autonomous Drone Flight Bootcamp',
+      title: 'Drone & Multirotor Flight Bootcamp',
       category: 'Workshops',
-      date: 'JUNE 2026',
-      desc: 'Junior members assembling custom brushless motor arms and soldering power distribution boards.',
-      aspectRatio: 'landscape'
+      date: 'SEPTEMBER 2026',
+      desc: 'Immersive flight aerodynamics session covering ESCs, brushless thrust dynamics, and radio telemetry bind procedures.',
+      image: '/abes/bootcamp.webp',
+      badge: 'Flagship Bootcamp'
     },
     {
       id: 5,
-      title: 'Edge AI Object Detection Live Demonstration',
+      title: 'Proteus & MATLAB Control Loop Simulation',
       category: 'AI/ML',
-      date: 'MAY 2026',
-      desc: 'Running 60 FPS YOLO models on NVIDIA Jetson mounted to an indoor mobile rover.',
-      aspectRatio: 'portrait'
+      date: 'DECEMBER 2026',
+      desc: 'Advanced software simulation sessions focusing on model-based control algorithms, virtual instruments, and PID tuning.',
+      image: '/abes/proteus-simulink.webp',
+      badge: 'Simulation Masterclass'
     },
     {
       id: 6,
-      title: 'National Robotics Championship Team Showcase',
-      category: 'Events',
-      date: 'APRIL 2026',
-      desc: 'Club competition squad representing our university in the autonomous line-maze sprint.',
-      aspectRatio: 'landscape'
+      title: 'Autonomous Rover & Campus Robotics Lab',
+      category: 'Robotics',
+      date: 'AUGUST 2026',
+      desc: 'Indoor obstacle traversal tests, LiDAR point-cloud mapping, and ROS2 mobile rover locomotion in the club flight arena.',
+      image: '/abes/bottom-banner.webp',
+      badge: 'Lab Research'
     }
   ];
 
@@ -68,22 +86,30 @@ export default function Gallery() {
       {/* Hero */}
       <section className="gallery-hero">
         <div className="container">
-          <span className="section-label">Media & Archives</span>
+          <span className="section-label">Media &amp; Archives</span>
           <h1 className="gallery-title">Club Media Gallery</h1>
+          <div className="heading-line-maroon" style={{ margin: '0.5rem auto 1.25rem auto' }}></div>
           <p className="gallery-subtitle">
-            A visual documentation of lab builds, flight tests, competition arenas, and technical workshops.
+            A visual showcase of our hardware fabrications, autonomous flight tests, national hackathons, and laboratory sessions at ABES Engineering College.
           </p>
 
+          {/* Premium Filter Buttons Bar */}
           <div className="gallery-filter-bar">
-            {categories.map(cat => (
-              <button
-                key={cat}
-                className={`filter-btn ${activeCategory === cat ? 'active' : ''}`}
-                onClick={() => setActiveCategory(cat)}
-              >
-                {cat}
-              </button>
-            ))}
+            {categories.map(cat => {
+              const isActive = activeCategory === cat.id;
+
+              return (
+                <button
+                  key={cat.id}
+                  className={`gallery-filter-btn ${isActive ? 'active' : ''}`}
+                  onClick={() => setActiveCategory(cat.id)}
+                  type="button"
+                  aria-pressed={isActive}
+                >
+                  {cat.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -97,22 +123,30 @@ export default function Gallery() {
                 key={item.id} 
                 className="aesthetic-card gallery-card"
                 onClick={() => setSelectedImage(item)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    setSelectedImage(item);
+                  }
+                }}
               >
-                <div className="gallery-image-placeholder">
-                  <div className="placeholder-art">
-                    <Camera size={32} color="var(--color-primary)" />
-                    <span className="placeholder-tag">{item.category}</span>
-                  </div>
+                <div className="gallery-image-container">
+                  <img src={item.image} alt={item.title} className="gallery-card-img" />
+                  <span className="gallery-badge-tag">{item.badge}</span>
+                  
                   <div className="gallery-hover-overlay">
-                    <Maximize2 size={20} />
-                    <span>View Image</span>
+                    <Maximize2 size={22} />
+                    <span>View Full Media</span>
                   </div>
                 </div>
 
                 <div className="gallery-info">
                   <div className="gallery-meta-row">
                     <span className="tag-pill">{item.category}</span>
-                    <span className="gallery-date">{item.date}</span>
+                    <span className="gallery-date">
+                      <Calendar size={12} /> {item.date}
+                    </span>
                   </div>
                   <h3 className="gallery-card-title">{item.title}</h3>
                   <p className="gallery-card-desc">{item.desc}</p>
@@ -125,17 +159,28 @@ export default function Gallery() {
 
       {/* Lightbox Modal */}
       {selectedImage && (
-        <div className="lightbox-backdrop" onClick={() => setSelectedImage(null)}>
+        <div className="lightbox-backdrop" onClick={() => setSelectedImage(null)} role="dialog" aria-modal="true">
           <div className="lightbox-content aesthetic-card" onClick={e => e.stopPropagation()}>
-            <button className="lightbox-close" onClick={() => setSelectedImage(null)}>
+            <button 
+              className="lightbox-close" 
+              onClick={() => setSelectedImage(null)}
+              aria-label="Close image preview"
+              type="button"
+            >
               <X size={20} />
             </button>
-            <div className="lightbox-image-preview">
-              <Camera size={48} color="var(--color-primary)" />
-              <p style={{ marginTop: '1rem', color: 'var(--color-text-muted)' }}>Image Preview Placeholder</p>
+            
+            <div className="lightbox-image-wrapper">
+              <img src={selectedImage.image} alt={selectedImage.title} className="lightbox-full-img" />
             </div>
+
             <div className="lightbox-details">
-              <span className="tag-pill">{selectedImage.category} &bull; {selectedImage.date}</span>
+              <div className="lightbox-meta">
+                <span className="tag-pill">{selectedImage.category}</span>
+                <span className="gallery-date">
+                  <Calendar size={13} /> {selectedImage.date}
+                </span>
+              </div>
               <h2>{selectedImage.title}</h2>
               <p>{selectedImage.desc}</p>
             </div>
