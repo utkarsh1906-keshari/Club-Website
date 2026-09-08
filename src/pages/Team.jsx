@@ -59,7 +59,7 @@ export default function Team() {
       desc: 'Managing club public visibility, photography, video showcases, and technical storytelling across social handles.'
     },
     {
-      name: 'Maanya',
+      name: 'Asra Kamal',
       role: 'Research Head',
       department: 'Research & Innovation',
       desc: 'Directing autonomous rover path planning algorithms, computer vision pipelines, and student research papers.'

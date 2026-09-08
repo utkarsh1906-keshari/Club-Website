@@ -10,10 +10,10 @@ export default function Domains() {
     {
       id: 'ai-ml',
       name: 'AI & Machine Learning',
-      lead: 'Maanya (Research Head)',
+      lead: 'Asra Kamal',
       badge: 'Edge AI & Perception',
       icon: <Brain size={24} />,
-      desc: 'Deploying edge neural perception, real-time computer vision, obstacle avoidance algorithms, and ROS2 autonomous navigation on physical mobile robots and UAV platforms.',
+      desc: 'Developing intelligent systems that learn from data and make autonomous decisions. Focus on real-time perception, predictive modeling, and decision-making algorithms for robotics and AI applications.',
       focusAreas: [
         'Real-Time Computer Vision (YOLO, OpenCV, TensorRT)',
         'Deep Reinforcement Learning for Autonomous Flight',
