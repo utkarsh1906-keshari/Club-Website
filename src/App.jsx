@@ -54,6 +54,9 @@ function App() {
             <Route path="domains" element={<DomainsAdmin />} />
             <Route path="gallery" element={<GalleryAdmin />} />
           </Route>
+
+          {/* Catch-all fallback for any unknown URL -> clean redirect to Home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
     </Router>
