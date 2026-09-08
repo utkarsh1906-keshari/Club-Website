@@ -1,0 +1,10 @@
+/* Component specific styles can go here, but mostly we will use CSS modules or inline styled blocks where vanilla CSS makes it easier */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+main {
+  flex: 1;
+}

@@ -1,0 +1,147 @@
+.join-page {
+  position: relative;
+}
+
+.join-hero {
+  padding: var(--spacing-4xl) 0 var(--spacing-2xl) 0;
+  text-align: center;
+  background: var(--color-bg-elevated);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.join-title {
+  font-size: clamp(2.2rem, 4.5vw, 3.5rem);
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text-primary);
+}
+
+.join-subtitle {
+  max-width: 680px;
+  margin: 0 auto;
+  font-size: 1.15rem;
+  color: var(--color-text-secondary);
+}
+
+.form-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.application-form {
+  padding: var(--spacing-2xl);
+}
+
+.form-header {
+  margin-bottom: var(--spacing-xl);
+  padding-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.form-header h2 {
+  font-size: 1.5rem;
+  color: var(--color-text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.form-header p {
+  font-size: 0.9rem;
+  color: var(--color-text-secondary);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+@media (max-width: 650px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-surface);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-size: 0.925rem;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-subtle);
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.submit-btn {
+  padding: 0.75rem 1.75rem;
+  font-size: 0.95rem;
+}
+
+/* Success Card */
+.success-card {
+  text-align: center;
+  padding: var(--spacing-3xl) var(--spacing-2xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.success-icon-box {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-full);
+  background: rgba(5, 150, 105, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.success-card h2 {
+  font-size: 1.85rem;
+  color: var(--color-text-primary);
+}
+
+.success-card p {
+  max-width: 550px;
+  font-size: 1rem;
+  color: var(--color-text-secondary);
+}
+
+.success-subtext {
+  font-size: 0.875rem !important;
+  color: var(--color-text-muted) !important;
+  margin-bottom: 1rem;
+}
