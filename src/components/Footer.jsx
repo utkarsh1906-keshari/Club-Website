@@ -45,9 +45,9 @@ export default function Footer() {
             <h4 className="footer-heading">Technical Domains</h4>
             <ul className="footer-links">
               <li><Link to="/domains?domain=ai-ml">AI & Machine Learning</Link></li>
-              <li><Link to="/domains?domain=vlsi">VLSI & Hardware Systems</Link></li>
-              <li><Link to="/domains?domain=robotics-iot">Robotics & Connected IoT</Link></li>
-              <li><Link to="/domains?domain=drone-tech">Drone & UAV Technology</Link></li>
+              <li><Link to="/domains?domain=vlsi">Very Large Scale Integration(VLSI)</Link></li>
+              <li><Link to="/domains?domain=robotics-iot">Robotics & IOT</Link></li>
+              <li><Link to="/domains?domain=drone-tech">Drone Technology</Link></li>
             </ul>
           </div>
 

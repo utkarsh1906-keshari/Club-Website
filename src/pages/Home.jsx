@@ -28,7 +28,7 @@ export default function Home() {
     {
       title: 'Technical Domains',
       tag: 'SPECIALIZATIONS',
-      desc: 'Deep-dive into our 4 core engineering domains: AI & Autonomous Perception, Embedded VLSI, Robotics IoT, and Aerial UAVs.',
+      desc: 'Deep-dive into our 4 core engineering domains: AI & Machine Learning, Very Large Scale Integration(VLSI), Robotics & IOT, and Drone Technology.',
       link: '/domains',
       linkText: 'Explore Domains',
       badge: '4 Verticals'

@@ -155,9 +155,9 @@ export default function JoinUs() {
                   <label htmlFor="domain">Preferred Technical Domain *</label>
                   <select id="domain" name="domain" value={formData.domain} onChange={handleChange}>
                     <option value="AI/ML">AI & Machine Learning</option>
-                    <option value="VLSI">VLSI & Hardware Design</option>
-                    <option value="Robotics & IoT">Robotics & IoT</option>
-                    <option value="Drone Technology">Drone & UAV Technology</option>
+                    <option value="VLSI">Very Large Scale Integration(VLSI)</option>
+                    <option value="Robotics & IoT">Robotics & IOT</option>
+                    <option value="Drone Technology">Drone Technology</option>
                     <option value="None / Pure Management">None / Pure Functional Role</option>
                   </select>
                 </div>

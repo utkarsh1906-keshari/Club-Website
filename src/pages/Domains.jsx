@@ -9,7 +9,7 @@ export default function Domains() {
   const domainData = [
     {
       id: 'ai-ml',
-      name: 'AI & Autonomous Perception',
+      name: 'AI & Machine Learning',
       lead: 'Maanya (Research Head)',
       badge: 'Edge AI & Perception',
       icon: <Brain size={24} />,
@@ -39,7 +39,7 @@ export default function Domains() {
     },
     {
       id: 'vlsi',
-      name: 'Embedded Systems & VLSI',
+      name: 'Very Large Scale Integration(VLSI)',
       lead: 'Akshat Modanwal (Technical Head)',
       badge: 'Hardware & Silicon Design',
       icon: <Cpu size={24} />,
@@ -69,7 +69,7 @@ export default function Domains() {
     },
     {
       id: 'robotics-iot',
-      name: 'Robotics & Connected IoT',
+      name: 'Robotics & IOT',
       lead: 'Arjun Singh (Technical Head)',
       badge: 'Ground Systems & Telemetry',
       icon: <Bot size={24} />,
@@ -99,7 +99,7 @@ export default function Domains() {
     },
     {
       id: 'drone-tech',
-      name: 'Aerial Robotics & UAVs',
+      name: 'Drone Technology',
       lead: 'Ayush Tyagi & Flight Lab Team',
       badge: 'Aerodynamics & Flight Dynamics',
       icon: <Plane size={24} />,

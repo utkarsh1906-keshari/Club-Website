@@ -167,6 +167,7 @@
   color: var(--color-text-primary);
   margin: 0 0 0.2rem 0;
   line-height: 1.25;
+  overflow-wrap: break-word;
 }
 
 .domain-tab-lead {
