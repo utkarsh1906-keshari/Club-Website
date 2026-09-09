@@ -83,6 +83,13 @@ export default function JoinUs() {
     try {
       const cleanEmail = (formData.email || '').trim().toLowerCase();
 
+      // Enforce official ABES college email ID ending with @abes.ac.in
+      if (!cleanEmail.endsWith('@abes.ac.in')) {
+        setErrorMsg('Please enter your official college email ID ending with @abes.ac.in (e.g. student.roll@abes.ac.in). Applications require an active @abes.ac.in ID.');
+        setLoading(false);
+        return;
+      }
+
       // Duplicate email check
       if (cycleConfig?.id) {
         const exists = await applicationsService.checkEmailExists(cleanEmail, cycleConfig.id);
@@ -330,14 +337,14 @@ export default function JoinUs() {
                   <div className="form-group">
                     <label htmlFor="email">
                       {activeQuestions.find(q => q.id === 'email')?.label || 'College Email Address'} *
-                      <span className="input-hint-inline">(1 submission per email)</span>
+                      <span className="input-hint-inline">(@abes.ac.in ID required)</span>
                     </label>
                     <input
                       type="email"
                       id="email"
                       name="email"
                       required
-                      placeholder="e.g. student@college.edu"
+                      placeholder="e.g. yourname.roll@abes.ac.in"
                       value={formData.email}
                       onChange={handleChange}
                       className={isDuplicate ? 'input-error-highlight' : ''}
