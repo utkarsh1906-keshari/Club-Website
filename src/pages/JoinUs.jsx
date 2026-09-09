@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Send, CheckCircle2, Sparkles, ArrowRight } from 'lucide-react';
+import { applicationsService } from '../lib/dataService';
 import './JoinUs.css';
 
 export default function JoinUs() {
@@ -17,21 +18,37 @@ export default function JoinUs() {
 
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setErrorMsg('');
 
-    // Simulate submission / storage until Supabase connects
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await applicationsService.create({
+        name: formData.name,
+        email: formData.email,
+        student_id: formData.studentId,
+        branch: formData.branch,
+        year: formData.year,
+        domain: formData.domain,
+        role: formData.role,
+        reason: formData.reason,
+        portfolio_url: formData.portfolio
+      });
       setSubmitted(true);
-    }, 800);
+    } catch (err) {
+      console.error('Application submission error:', err);
+      setErrorMsg('Failed to submit application. Please check your details and try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -80,6 +97,11 @@ export default function JoinUs() {
               <div className="form-header">
                 <h2>Candidate Application Form</h2>
                 <p>Please fill out your authentic academic and interest details.</p>
+                {errorMsg && (
+                  <div style={{ padding: '0.75rem 1rem', background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', borderRadius: '8px', marginTop: '1rem', fontSize: '0.9rem' }}>
+                    {errorMsg}
+                  </div>
+                )}
               </div>
 
               <div className="form-grid">

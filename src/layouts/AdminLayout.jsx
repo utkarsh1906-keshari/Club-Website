@@ -49,14 +49,23 @@ export default function AdminLayout() {
     return <AdminLogin onLoginSuccess={(session) => setAdminSession(session)} />;
   }
 
-  const navItems = [
-    { name: 'Dashboard', path: '/admin', icon: <LayoutDashboard size={18} /> },
-    { name: 'Events', path: '/admin/events', icon: <Calendar size={18} /> },
-    { name: 'Projects', path: '/admin/projects', icon: <FolderGit2 size={18} /> },
-    { name: 'Team Members', path: '/admin/team', icon: <Users size={18} /> },
-    { name: 'Domains', path: '/admin/domains', icon: <Layers size={18} /> },
-    { name: 'Gallery Media', path: '/admin/gallery', icon: <ImageIcon size={18} /> },
+  const allNavItems = [
+    { name: 'Dashboard', path: '/admin', icon: <LayoutDashboard size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'domain_lead', 'event_manager', 'social_media'] },
+    { name: 'Events', path: '/admin/events', icon: <Calendar size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'event_manager'] },
+    { name: 'Projects', path: '/admin/projects', icon: <FolderGit2 size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'domain_lead'] },
+    { name: 'Team Members', path: '/admin/team', icon: <Users size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'domain_lead'] },
+    { name: 'Domains', path: '/admin/domains', icon: <Layers size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'domain_lead'] },
+    { name: 'Gallery Media', path: '/admin/gallery', icon: <ImageIcon size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'social_media'] },
+    { name: 'Applications', path: '/admin/applications', icon: <Users size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'domain_lead'] },
+    { name: 'Announcements', path: '/admin/announcements', icon: <ShieldCheck size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'social_media'] },
+    { name: 'Admin Users', path: '/admin/users', icon: <Crown size={18} />, roles: ['super_admin', 'faculty', 'club_head'] },
+    { name: 'Settings & SQL', path: '/admin/settings', icon: <ShieldCheck size={18} />, roles: ['super_admin', 'faculty', 'club_head'] },
   ];
+
+  const currentRole = adminSession?.role || 'faculty';
+  const navItems = allNavItems.filter(item => 
+    item.roles.includes(currentRole) || item.roles.includes('super_admin') && (currentRole === 'faculty' || currentRole === 'club_head')
+  );
 
   const isActive = (path) => {
     if (path === '/admin') return location.pathname === '/admin';

@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Maximize2, 
   Calendar 
 } from 'lucide-react';
+import { galleryService } from '../lib/dataService';
 import './Gallery.css';
 
 export default function Gallery() {
   const [activeCategory, setActiveCategory] = useState('All');
   const [selectedImage, setSelectedImage] = useState(null);
+  const [galleryItems, setGalleryItems] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   const categories = [
     { id: 'All', label: 'All' },
@@ -20,62 +23,20 @@ export default function Gallery() {
     { id: 'Workshops', label: 'Workshops' }
   ];
 
-  const galleryItems = [
-    {
-      id: 1,
-      title: 'FPV Racing Quad Assembly & Flight Calibration',
-      category: 'Drones',
-      date: 'NOVEMBER 2026',
-      desc: 'Hands-on carbon-fiber racing quadcopter fabrication, Betaflight motor configuration, and line-of-sight test hovers.',
-      image: '/abes/fpv-assembly.webp',
-      badge: 'Hardware Build'
-    },
-    {
-      id: 2,
-      title: 'RobotoHack 48-Hour National Hackathon',
-      category: 'Events',
-      date: 'JANUARY 2027',
-      desc: 'Inter-collegiate hardware marathon bringing together engineering squads to construct autonomous rovers and drone payloads.',
-      image: '/abes/robotohack.webp',
-      badge: 'National Hackathon'
-    },
-    {
-      id: 3,
-      title: 'Circuit Bid Hardware & Telemetry Competition',
-      category: 'VLSI',
-      date: 'OCTOBER 2026',
-      desc: 'Real-time schematic debugging, component bidding, and oscilloscope telemetry validation under competitive time limits.',
-      image: '/abes/circuit-bid.webp',
-      badge: 'Hardware Challenge'
-    },
-    {
-      id: 4,
-      title: 'Drone & Multirotor Flight Bootcamp',
-      category: 'Workshops',
-      date: 'SEPTEMBER 2026',
-      desc: 'Immersive flight aerodynamics session covering ESCs, brushless thrust dynamics, and radio telemetry bind procedures.',
-      image: '/abes/bootcamp.webp',
-      badge: 'Flagship Bootcamp'
-    },
-    {
-      id: 5,
-      title: 'Proteus & MATLAB Control Loop Simulation',
-      category: 'AI/ML',
-      date: 'DECEMBER 2026',
-      desc: 'Advanced software simulation sessions focusing on model-based control algorithms, virtual instruments, and PID tuning.',
-      image: '/abes/proteus-simulink.webp',
-      badge: 'Simulation Masterclass'
-    },
-    {
-      id: 6,
-      title: 'Autonomous Rover & Campus Robotics Lab',
-      category: 'Robotics',
-      date: 'AUGUST 2026',
-      desc: 'Indoor obstacle traversal tests, LiDAR point-cloud mapping, and ROS2 mobile rover locomotion in the club flight arena.',
-      image: '/abes/bottom-banner.webp',
-      badge: 'Lab Research'
+  useEffect(() => {
+    async function loadGallery() {
+      setLoading(true);
+      try {
+        const data = await galleryService.getAll();
+        setGalleryItems(data);
+      } catch (err) {
+        console.error('Failed to load gallery items:', err);
+      } finally {
+        setLoading(false);
+      }
     }
-  ];
+    loadGallery();
+  }, []);
 
   const filteredItems = activeCategory === 'All'
     ? galleryItems
@@ -132,7 +93,7 @@ export default function Gallery() {
                 }}
               >
                 <div className="gallery-image-container">
-                  <img src={item.image} alt={item.title} className="gallery-card-img" />
+                  <img src={item.image_url || item.image} alt={item.title} className="gallery-card-img" />
                   <span className="gallery-badge-tag">{item.badge}</span>
                   
                   <div className="gallery-hover-overlay">
@@ -145,11 +106,11 @@ export default function Gallery() {
                   <div className="gallery-meta-row">
                     <span className="tag-pill">{item.category}</span>
                     <span className="gallery-date">
-                      <Calendar size={12} /> {item.date}
+                      <Calendar size={12} /> {item.date_label || item.date}
                     </span>
                   </div>
                   <h3 className="gallery-card-title">{item.title}</h3>
-                  <p className="gallery-card-desc">{item.desc}</p>
+                  <p className="gallery-card-desc">{item.description || item.desc}</p>
                 </div>
               </div>
             ))}
@@ -171,18 +132,18 @@ export default function Gallery() {
             </button>
             
             <div className="lightbox-image-wrapper">
-              <img src={selectedImage.image} alt={selectedImage.title} className="lightbox-full-img" />
+              <img src={selectedImage.image_url || selectedImage.image} alt={selectedImage.title} className="lightbox-full-img" />
             </div>
 
             <div className="lightbox-details">
               <div className="lightbox-meta">
                 <span className="tag-pill">{selectedImage.category}</span>
                 <span className="gallery-date">
-                  <Calendar size={13} /> {selectedImage.date}
+                  <Calendar size={13} /> {selectedImage.date_label || selectedImage.date}
                 </span>
               </div>
               <h2>{selectedImage.title}</h2>
-              <p>{selectedImage.desc}</p>
+              <p>{selectedImage.description || selectedImage.desc}</p>
             </div>
           </div>
         </div>

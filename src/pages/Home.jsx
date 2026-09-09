@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ArrowRight, 
@@ -11,11 +11,27 @@ import {
   ChevronRight, 
   ExternalLink, 
   ShieldCheck,
-  Quote
+  Quote,
+  Bell
 } from 'lucide-react';
+import { announcementsService } from '../lib/dataService';
 import './Home.css';
 
 export default function Home() {
+  const [announcements, setAnnouncements] = useState([]);
+
+  useEffect(() => {
+    async function loadAnnouncements() {
+      try {
+        const data = await announcementsService.getAll(true);
+        setAnnouncements(data);
+      } catch (err) {
+        console.error('Failed to load announcements:', err);
+      }
+    }
+    loadAnnouncements();
+  }, []);
+
   const portalCards = [
     {
       title: 'About the Club',
@@ -58,6 +74,45 @@ export default function Home() {
         <div className="hero-banner-overlay"></div>
         
         <div className="container hero-banner-container">
+          {/* Active Announcement Alert */}
+          {announcements.length > 0 && (
+            <div className="home-announcement-banner" style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.65rem',
+              padding: '0.45rem 1.15rem',
+              background: 'rgba(255, 255, 255, 0.92)',
+              backdropFilter: 'blur(8px)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--radius-full)',
+              marginBottom: '1.25rem',
+              fontSize: '0.85rem',
+              boxShadow: 'var(--shadow-sm)'
+            }}>
+              <span style={{
+                background: 'var(--color-primary)',
+                color: '#fff',
+                padding: '0.15rem 0.5rem',
+                borderRadius: 'var(--radius-full)',
+                fontWeight: 700,
+                fontSize: '0.72rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem'
+              }}>
+                <Bell size={11} /> {announcements[0].badge || 'Notice'}
+              </span>
+              <span style={{ color: 'var(--color-text-primary)', fontWeight: 500 }}>
+                {announcements[0].title}
+              </span>
+              {announcements[0].link_url && (
+                <Link to={announcements[0].link_url} style={{ color: 'var(--color-primary)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                  View &rarr;
+                </Link>
+              )}
+            </div>
+          )}
+
           {/* Institutional Showcase: College Logo + Name | Vertical Line | Club Logo + Name */}
           <div className="hero-institutional-header">
             <div className="institutional-partner college-side" title="ABES Engineering College">

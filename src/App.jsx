@@ -10,6 +10,7 @@ import AdminLayout from './layouts/AdminLayout';
 import Home from './pages/Home';
 import About from './pages/About';
 import Domains from './pages/Domains';
+import Projects from './pages/Projects';
 import Events from './pages/Events';
 import Team from './pages/Team';
 import Gallery from './pages/Gallery';
@@ -24,6 +25,10 @@ import ProjectsAdmin from './admin/ProjectsAdmin';
 import TeamAdmin from './admin/TeamAdmin';
 import DomainsAdmin from './admin/DomainsAdmin';
 import GalleryAdmin from './admin/GalleryAdmin';
+import ApplicationsAdmin from './admin/ApplicationsAdmin';
+import AnnouncementsAdmin from './admin/AnnouncementsAdmin';
+import UsersAdmin from './admin/UsersAdmin';
+import SettingsAdmin from './admin/SettingsAdmin';
 
 function App() {
   return (
@@ -35,8 +40,7 @@ function App() {
             <Route index element={<Home />} />
             <Route path="about" element={<About />} />
             <Route path="domains" element={<Domains />} />
-            {/* Projects are now integrated directly inside Domains */}
-            <Route path="projects" element={<Navigate to="/domains" replace />} />
+            <Route path="projects" element={<Projects />} />
             <Route path="events" element={<Events />} />
             <Route path="team" element={<Team />} />
             <Route path="gallery" element={<Gallery />} />
@@ -53,6 +57,10 @@ function App() {
             <Route path="team" element={<TeamAdmin />} />
             <Route path="domains" element={<DomainsAdmin />} />
             <Route path="gallery" element={<GalleryAdmin />} />
+            <Route path="applications" element={<ApplicationsAdmin />} />
+            <Route path="announcements" element={<AnnouncementsAdmin />} />
+            <Route path="users" element={<UsersAdmin />} />
+            <Route path="settings" element={<SettingsAdmin />} />
           </Route>
 
           {/* Catch-all fallback for any unknown URL -> clean redirect to Home */}
