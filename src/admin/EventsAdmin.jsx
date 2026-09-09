@@ -1,16 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Calendar, 
   Plus, 
   Edit, 
   Trash2, 
-  Clock, 
-  MapPin, 
   Users, 
-  CheckCircle2, 
   X, 
   AlertTriangle,
-  ExternalLink,
   Search
 } from 'lucide-react';
 import { eventsService, eventRegistrationsService } from '../lib/dataService';

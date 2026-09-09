@@ -1,12 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  FolderGit2, 
   Plus, 
   Edit, 
   Trash2, 
   Search, 
-  ExternalLink, 
-  Sparkles, 
   X, 
   AlertTriangle 
 } from 'lucide-react';

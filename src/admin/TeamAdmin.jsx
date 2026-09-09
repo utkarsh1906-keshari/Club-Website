@@ -1,21 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Users, 
   Plus, 
   Edit, 
   Trash2, 
   Search, 
-  ShieldCheck, 
-  GraduationCap, 
-  Crown, 
   X, 
   AlertTriangle 
 } from 'lucide-react';
-import { membersService, domainsService } from '../lib/dataService';
+import { membersService } from '../lib/dataService';
 
 export default function TeamAdmin() {
   const [members, setMembers] = useState([]);
-  const [domains, setDomains] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -44,12 +39,8 @@ export default function TeamAdmin() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [mList, dList] = await Promise.all([
-        membersService.getAll(),
-        domainsService.getAll()
-      ]);
+      const mList = await membersService.getAll();
       setMembers(mList);
-      setDomains(dList);
     } catch (err) {
       console.error('Failed to load roster:', err);
     } finally {
