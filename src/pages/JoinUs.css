@@ -301,6 +301,68 @@
   background-color: #fef2f2 !important;
 }
 
+.input-warning-highlight {
+  border-color: #d97706 !important;
+  background-color: rgba(245, 158, 11, 0.04) !important;
+}
+
+.input-warning-highlight:focus {
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2) !important;
+}
+
+.email-recommend-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  margin-top: 0.45rem;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-sm);
+  color: #b45309;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+[data-theme="dark"] .email-recommend-warning {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+}
+
+.email-recommend-warning svg {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  color: #d97706;
+}
+
+[data-theme="dark"] .email-recommend-warning svg {
+  color: #fbbf24;
+}
+
+.email-recommend-warning code {
+  background: rgba(245, 158, 11, 0.16);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: inherit;
+}
+
+.email-valid-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #059669;
+}
+
+[data-theme="dark"] .email-valid-badge {
+  color: #34d399;
+}
+
 .already-applied-banner {
   display: flex;
   align-items: center;

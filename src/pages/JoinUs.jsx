@@ -74,6 +74,10 @@ export default function JoinUs() {
     if (errorMsg) setErrorMsg('');
   };
 
+  const trimmedEmail = (formData.email || '').trim().toLowerCase();
+  const isCollegeEmail = Boolean(trimmedEmail && trimmedEmail.endsWith('@abes.ac.in'));
+  const isNonCollegeEmail = Boolean(trimmedEmail && trimmedEmail.includes('@') && !trimmedEmail.endsWith('@abes.ac.in'));
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -83,9 +87,8 @@ export default function JoinUs() {
     try {
       const cleanEmail = (formData.email || '').trim().toLowerCase();
 
-      // Enforce official ABES college email ID ending with @abes.ac.in
-      if (!cleanEmail.endsWith('@abes.ac.in')) {
-        setErrorMsg('Please enter your official college email ID ending with @abes.ac.in (e.g. student.roll@abes.ac.in). Applications require an active @abes.ac.in ID.');
+      if (!cleanEmail) {
+        setErrorMsg('Please enter a valid email address.');
         setLoading(false);
         return;
       }
@@ -337,18 +340,38 @@ export default function JoinUs() {
                   <div className="form-group">
                     <label htmlFor="email">
                       {activeQuestions.find(q => q.id === 'email')?.label || 'College Email Address'} *
-                      <span className="input-hint-inline">(@abes.ac.in ID required)</span>
+                      <span className="input-hint-inline">(@abes.ac.in recommended)</span>
                     </label>
                     <input
                       type="email"
                       id="email"
                       name="email"
                       required
-                      placeholder="e.g. yourname.roll@abes.ac.in"
+                      placeholder="e.g. yourname.roll@abes.ac.in or personal email"
                       value={formData.email}
                       onChange={handleChange}
-                      className={isDuplicate ? 'input-error-highlight' : ''}
+                      className={isDuplicate ? 'input-error-highlight' : isNonCollegeEmail ? 'input-warning-highlight' : ''}
                     />
+                    {isNonCollegeEmail && (
+                      <div className="email-recommend-warning">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <line x1="12" y1="8" x2="12" y2="12"></line>
+                          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <span>
+                          <strong>Recommendation:</strong> We recommend using your official college email (<code>@abes.ac.in</code>) for student verification. You may still proceed with this email.
+                        </span>
+                      </div>
+                    )}
+                    {isCollegeEmail && (
+                      <div className="email-valid-badge">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                        <span>Official ABES college email verified</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
