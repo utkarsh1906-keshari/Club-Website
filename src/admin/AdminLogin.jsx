@@ -94,8 +94,22 @@ export default function AdminLogin({ onLoginSuccess }) {
     <div className="admin-login-page">
       <div className="admin-login-container">
         <div className="admin-login-card">
+          <div className="admin-login-brand">
+            <div className="admin-brand-emblem-wrap">
+              <img 
+                src="/club-emblem.png" 
+                alt="Drones & Robotics Club Logo" 
+                className="admin-brand-emblem" 
+              />
+            </div>
+            <div className="admin-brand-titles">
+              <span className="admin-brand-name">DRONES &amp; ROBOTICS</span>
+              <span className="admin-brand-inst">ABES ENGINEERING COLLEGE</span>
+            </div>
+          </div>
+
           <div className="admin-login-header">
-            <h1 className="admin-login-title">Admin Login</h1>
+            <h1 className="admin-login-title">Admin Portal</h1>
             <p className="admin-login-desc">Enter your password to continue</p>
           </div>
 
@@ -121,7 +135,7 @@ export default function AdminLogin({ onLoginSuccess }) {
                   title={showPassword ? 'Hide password' : 'Show password'}
                   aria-label="Toggle password visibility"
                 >
-                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </div>
@@ -129,7 +143,7 @@ export default function AdminLogin({ onLoginSuccess }) {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="btn btn-primary login-submit-btn"
+              className="login-submit-btn"
             >
               {isSubmitting ? 'Signing in...' : 'Sign In'}
             </button>

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Clean, Natural & Minimal Admin Login Styling
+   Admin Login — Consistent Website Theme & Natural Aesthetic
    ========================================================================== */
 
 .admin-login-page {
@@ -7,39 +7,115 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1rem;
+  padding: 2.5rem 1.25rem;
   background-color: var(--color-bg-base);
+  background-image: 
+    radial-gradient(circle at 50% 15%, rgba(2, 132, 199, 0.08) 0%, rgba(99, 102, 241, 0.035) 45%, transparent 75%);
+  background-repeat: no-repeat;
+}
+
+[data-theme="dark"] .admin-login-page {
+  background-image: 
+    radial-gradient(circle at 50% 15%, rgba(56, 189, 248, 0.1) 0%, rgba(99, 102, 241, 0.05) 45%, transparent 75%);
 }
 
 .admin-login-container {
   width: 100%;
-  max-width: 380px;
+  max-width: 400px;
 }
 
 .admin-login-card {
+  position: relative;
   background: var(--color-bg-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg, 16px);
-  padding: 2.25rem 2rem;
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  padding: 2.5rem 2.25rem 2rem 2.25rem;
+  box-shadow: 
+    0 12px 36px -4px rgba(15, 23, 42, 0.06), 
+    0 0 0 1px rgba(2, 132, 199, 0.06);
+  overflow: hidden;
+}
+
+/* Subtle brand gradient top accent bar */
+.admin-login-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #0284c7 0%, #6366f1 100%);
+}
+
+/* Brand Identity Header */
+.admin-login-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 1.75rem;
+}
+
+.admin-brand-emblem-wrap {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: var(--color-bg-base);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.85rem;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.1);
+  padding: 8px;
+}
+
+.admin-brand-emblem {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.admin-brand-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.admin-brand-name {
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--color-text-primary);
+}
+
+.admin-brand-inst {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--color-primary);
 }
 
 /* Header */
 .admin-login-header {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-border-subtle, #f1f5f9);
 }
 
 .admin-login-title {
   font-family: var(--font-display);
-  font-size: 1.5rem;
+  font-size: 1.35rem;
   font-weight: 700;
   color: var(--color-text-primary);
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.25rem;
+  letter-spacing: -0.02em;
 }
 
 .admin-login-desc {
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   color: var(--color-text-secondary);
   margin: 0;
 }
@@ -51,10 +127,10 @@
 
 .input-field-label {
   display: block;
-  font-size: 0.85rem;
+  font-size: 0.825rem;
   font-weight: 600;
   color: var(--color-text-primary);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.45rem;
 }
 
 .passkey-input-wrapper {
@@ -65,7 +141,7 @@
 
 .login-passkey-input {
   width: 100%;
-  padding: 0.8rem 2.75rem 0.8rem 1rem;
+  padding: 0.75rem 2.6rem 0.75rem 0.95rem;
   background: var(--color-bg-base);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md, 10px);
@@ -78,7 +154,7 @@
 .login-passkey-input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px var(--color-primary-subtle);
+  box-shadow: 0 0 0 3px var(--color-primary-subtle, rgba(2, 132, 199, 0.12));
   background: var(--color-bg-surface);
 }
 
@@ -97,45 +173,40 @@
 }
 
 .toggle-pw-btn:hover {
-  color: var(--color-text-primary);
+  color: var(--color-primary);
 }
 
-/* Submit Button */
+/* Submit Button — Theme Accent Gradient */
 .login-submit-btn {
   width: 100%;
-  padding: 0.8rem 1.25rem;
-  font-size: 0.95rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.925rem;
   font-weight: 600;
+  font-family: var(--font-sans);
   border-radius: var(--radius-md, 10px);
   border: none;
-  background: var(--color-text-primary);
-  color: var(--color-bg-surface);
+  background: linear-gradient(135deg, var(--color-primary) 0%, #0369a1 100%);
+  color: #ffffff;
   cursor: pointer;
+  box-shadow: 0 3px 12px var(--color-primary-glow, rgba(2, 132, 199, 0.25));
   transition: all var(--transition-fast);
 }
 
 .login-submit-btn:hover:not(:disabled) {
-  background: #1e293b;
+  background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);
+  box-shadow: 0 6px 18px var(--color-primary-glow, rgba(2, 132, 199, 0.35));
   transform: translateY(-1px);
 }
 
-[data-theme="dark"] .login-submit-btn {
-  background: #ffffff;
-  color: #0f172a;
-}
-
-[data-theme="dark"] .login-submit-btn:hover:not(:disabled) {
-  background: #e2e8f0;
-}
-
 .login-submit-btn:disabled {
-  opacity: 0.6;
+  opacity: 0.65;
   cursor: not-allowed;
+  transform: none;
 }
 
 /* Footer Link */
 .admin-login-footer {
-  margin-top: 1.75rem;
+  margin-top: 1.5rem;
   text-align: center;
 }
 
@@ -143,12 +214,13 @@
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.85rem;
+  font-size: 0.825rem;
+  font-weight: 500;
   color: var(--color-text-muted);
   text-decoration: none;
   transition: color var(--transition-fast);
 }
 
 .login-back-link:hover {
-  color: var(--color-text-primary);
+  color: var(--color-primary);
 }
