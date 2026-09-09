@@ -8,10 +8,14 @@ import {
   Calendar, 
   Sparkles, 
   ArrowRight, 
-  Lock,
   Layers,
   FolderGit2,
-  Bell
+  Bell,
+  Cpu,
+  Plane,
+  Bot,
+  Brain,
+  ExternalLink
 } from 'lucide-react';
 import { applicationsService, recruitmentService } from '../lib/dataService';
 import './JoinUs.css';
@@ -44,7 +48,6 @@ export default function JoinUs() {
         const config = await recruitmentService.getCycleConfig();
         setCycleConfig(config);
         
-        // Check if user already submitted in this browser session
         if (config && config.id) {
           const prior = localStorage.getItem(`drc_applied_${config.id}`);
           if (prior) {
@@ -76,7 +79,7 @@ export default function JoinUs() {
     try {
       const cleanEmail = (formData.email || '').trim().toLowerCase();
 
-      // Duplicate email check
+      // Client-side duplicate check
       if (cycleConfig?.id) {
         const exists = await applicationsService.checkEmailExists(cleanEmail, cycleConfig.id);
         if (exists) {
@@ -101,7 +104,6 @@ export default function JoinUs() {
         portfolio_url: formData.portfolio
       });
 
-      // Save submission flag to local storage
       if (cycleConfig?.id) {
         localStorage.setItem(`drc_applied_${cycleConfig.id}`, cleanEmail);
         setAlreadySubmittedEmail(cleanEmail);
@@ -123,134 +125,136 @@ export default function JoinUs() {
   if (checkingCycle) {
     return (
       <div className="join-page">
-        <div className="container" style={{ padding: '6rem 1.5rem', textAlign: 'center' }}>
+        <div className="container" style={{ padding: '7rem 1.5rem', textAlign: 'center' }}>
           <div className="loading-spinner" style={{ margin: '0 auto 1.5rem' }}></div>
-          <p style={{ color: 'var(--color-text-secondary)' }}>Checking recruitment cycle status...</p>
+          <p style={{ color: 'var(--color-text-secondary)' }}>Checking recruitment status...</p>
         </div>
       </div>
     );
   }
 
-  // 1. RECRUITMENT CLOSED STATE
-  if (!cycleConfig?.is_active) {
-    return (
-      <div className="join-page">
-        {/* Hero */}
-        <section className="join-hero">
-          <div className="container">
-            <span className="status-pill status-closed">
-              <span className="status-dot status-dot-inactive"></span> Applications Currently Closed
-            </span>
-            <h1 className="join-title">{cycleConfig?.title || 'Recruitment Closed'}</h1>
-            <p className="join-subtitle">
-              {cycleConfig?.closed_message || 
-                'Recruitment for the Drones & Robotics Club is currently paused. Please stay tuned for upcoming admission drives.'}
-            </p>
-          </div>
-        </section>
+  const isClosed = !cycleConfig?.is_active;
 
-        {/* Closed Announcement & Guide Section */}
-        <section className="section-padding">
-          <div className="container" style={{ maxWidth: '820px' }}>
-            <div className="aesthetic-card closed-cycle-card">
-              <div className="closed-icon-badge">
-                <Lock size={36} color="var(--color-primary)" />
-              </div>
-              <h2 className="closed-card-title">Recruitment Drive Is Not Active</h2>
-              <p className="closed-card-desc">
-                The membership registration portal is active only during designated recruitment cycles scheduled by the club leadership. 
-                Keep building, exploring our open-source projects, and honing your technical abilities in the meantime.
-              </p>
-
-              <div className="closed-info-grid">
-                <div className="closed-info-box">
-                  <span className="closed-info-label">Current Cycle</span>
-                  <span className="closed-info-value">{cycleConfig?.title || 'Session 2026–2027'}</span>
-                </div>
-                <div className="closed-info-box">
-                  <span className="closed-info-label">Target Batches</span>
-                  <span className="closed-info-value">{cycleConfig?.target_years || '1st & 2nd Year Students'}</span>
-                </div>
-                <div className="closed-info-box">
-                  <span className="closed-info-label">Status</span>
-                  <span className="closed-info-value" style={{ color: '#dc2626' }}>Closed / Inactive</span>
-                </div>
-              </div>
-
-              <div className="closed-next-steps">
-                <h3>What you can do while recruitment is closed:</h3>
-                <div className="next-steps-links">
-                  <Link to="/domains" className="step-link-card">
-                    <Layers size={20} color="var(--color-primary)" />
-                    <div>
-                      <strong>Explore 4 Technical Domains</strong>
-                      <span>Learn about AI/ML, VLSI, Robotics & IoT, and Drone Tech</span>
-                    </div>
-                  </Link>
-
-                  <Link to="/projects" className="step-link-card">
-                    <FolderGit2 size={20} color="var(--color-primary)" />
-                    <div>
-                      <strong>Inspect Club Projects</strong>
-                      <span>Browse open-source quadcopters, rovers, and FPGA systems</span>
-                    </div>
-                  </Link>
-
-                  <Link to="/" className="step-link-card">
-                    <Bell size={20} color="var(--color-primary)" />
-                    <div>
-                      <strong>Check Active Announcements</strong>
-                      <span>Look out for recruitment dates, workshops, and bootcamps</span>
-                    </div>
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      </div>
-    );
-  }
-
-  // 2. RECRUITMENT ACTIVE STATE
   return (
     <div className="join-page">
-      {/* Hero */}
+      {/* Unified Institutional Hero Header */}
       <section className="join-hero">
         <div className="container">
-          <span className="status-pill status-active">
-            <span className="status-dot"></span> Recruitment Cycle Active
-          </span>
-          <h1 className="join-title">{cycleConfig?.title || 'Apply to Join The Club'}</h1>
+          <div className="join-hero-crest-wrapper">
+            <div className="join-hero-crest-box">
+              <img 
+                src="/club-emblem.png" 
+                alt="Drone & Robotics Club - ABES Logo" 
+                className="join-hero-crest-img" 
+              />
+            </div>
+          </div>
+
+          <span className="section-label">Club Membership</span>
+          <h1 className="join-title">Join The Club</h1>
+          <div className="heading-line-maroon" style={{ margin: '0.5rem auto 1.25rem auto' }}></div>
           <p className="join-subtitle">
-            {cycleConfig?.subtitle || 
-              'Whether your passion lies in autonomous drone flight, computer vision, FPGA silicon, or creative management, build with us.'}
+            Be a part of our multidisciplinary technical domains and creative management squads at ABES Engineering College.
           </p>
 
-          {/* Cycle Details Strip */}
-          <div className="cycle-meta-strip">
-            <div className="cycle-meta-item">
-              <Calendar size={15} />
-              <span>Target: <strong>{cycleConfig?.target_years || '1st & 2nd Year'}</strong></span>
-            </div>
-            {cycleConfig?.deadline && (
-              <div className="cycle-meta-item">
-                <Clock size={15} />
-                <span>Deadline: <strong>{new Date(cycleConfig.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong></span>
-              </div>
+          <div style={{ marginTop: '1.25rem' }}>
+            {isClosed ? (
+              <span className="status-pill status-closed">
+                <span className="status-dot status-dot-inactive"></span> Applications Currently Closed
+              </span>
+            ) : (
+              <span className="status-pill status-active">
+                <span className="status-dot"></span> Applications Open &bull; {cycleConfig?.title}
+              </span>
             )}
-            <div className="cycle-meta-item">
-              <Sparkles size={15} />
-              <span>Single Submission Policy Enforced</span>
-            </div>
           </div>
         </div>
       </section>
 
-      {/* Form Section */}
+      {/* Main Content Area */}
       <section className="section-padding">
-        <div className="container form-container">
-          {submitted ? (
+        <div className="container" style={{ maxWidth: isClosed ? '920px' : '820px' }}>
+          {isClosed ? (
+            /* CLOSED RECRUITMENT VIEW — Natural, Thematic & Inspiring */
+            <div className="aesthetic-card closed-recruitment-card">
+              <div className="closed-banner-inner">
+                <div className="closed-header-content">
+                  <h2 className="closed-heading">Recruitment Window Closed</h2>
+                  <p className="closed-description">
+                    {cycleConfig?.closed_message || 
+                      'Recruitment for the Drones & Robotics Club takes place in scheduled semester drives. Submissions are currently paused while our technical squads review applications and run project labs.'}
+                  </p>
+
+                  <div className="closed-session-pills">
+                    <span className="meta-pill">
+                      <strong>Session:</strong> {cycleConfig?.title || '2026–2027'}
+                    </span>
+                    <span className="meta-pill">
+                      <strong>Target:</strong> {cycleConfig?.target_years || '1st & 2nd Year Students'}
+                    </span>
+                    <span className="meta-pill">
+                      <strong>Status:</strong> <span style={{ color: '#dc2626', fontWeight: 600 }}>Closed</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Four Technical Domains Preview Cards */}
+              <div className="closed-prep-section">
+                <h3 className="closed-prep-title">Prepare for the next induction round</h3>
+                <p className="closed-prep-desc">
+                  Review our four technical verticals to see what tools, hardware, and skillsets our projects focus on:
+                </p>
+
+                <div className="domain-prep-grid">
+                  <div className="domain-prep-card">
+                    <div className="domain-prep-icon">
+                      <Brain size={22} color="var(--color-primary)" />
+                    </div>
+                    <h4>AI &amp; Machine Learning</h4>
+                    <p>Computer vision, object detection, ROS2 navigation, and edge neural inference.</p>
+                  </div>
+
+                  <div className="domain-prep-card">
+                    <div className="domain-prep-icon">
+                      <Cpu size={22} color="var(--color-primary)" />
+                    </div>
+                    <h4>VLSI &amp; Chip Design</h4>
+                    <p>FPGA telemetry, synthesizable Verilog, digital logic, and custom hardware accelerators.</p>
+                  </div>
+
+                  <div className="domain-prep-card">
+                    <div className="domain-prep-icon">
+                      <Bot size={22} color="var(--color-primary)" />
+                    </div>
+                    <h4>Robotics &amp; IoT</h4>
+                    <p>Autonomous mobile rovers, LiDAR sensors, embedded microcontrollers, and actuators.</p>
+                  </div>
+
+                  <div className="domain-prep-card">
+                    <div className="domain-prep-icon">
+                      <Plane size={22} color="var(--color-primary)" />
+                    </div>
+                    <h4>Drone Technology</h4>
+                    <p>Aerodynamics, carbon airframe assembly, Betaflight ESC tuning, and flight autonomy.</p>
+                  </div>
+                </div>
+
+                <div className="closed-actions-bar">
+                  <Link to="/domains" className="btn btn-primary">
+                    Explore Technical Domains &rarr;
+                  </Link>
+                  <Link to="/projects" className="btn btn-secondary">
+                    Browse Club Projects
+                  </Link>
+                  <Link to="/events" className="btn btn-secondary">
+                    View Workshops &amp; Events
+                  </Link>
+                </div>
+              </div>
+            </div>
+          ) : submitted ? (
+            /* SUCCESS CONFIRMATION VIEW */
             <div className="aesthetic-card success-card">
               <div className="success-icon-box">
                 <CheckCircle2 size={48} color="var(--color-accent-emerald)" />
@@ -264,7 +268,7 @@ export default function JoinUs() {
               </p>
               
               <div className="success-note">
-                <strong>Important:</strong> Your submission is officially registered with email <code>{formData.email}</code>. Duplicate submissions from the same email are blocked to ensure fairness.
+                <strong>Notice:</strong> Your application is registered with email <code>{formData.email}</code>. To maintain fair evaluation, multiple submissions per student are not accepted.
               </div>
 
               <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -277,19 +281,20 @@ export default function JoinUs() {
               </div>
             </div>
           ) : (
+            /* ACTIVE APPLICATION FORM */
             <form onSubmit={handleSubmit} className="aesthetic-card application-form">
               <div className="form-header">
                 <h2>Candidate Application Form</h2>
                 <p>
                   {cycleConfig?.instructions || 
-                    'Please fill out your authentic academic and interest details. Only one application is permitted per email.'}
+                    'Please fill out your authentic academic and interest details. Only one application is permitted per student email.'}
                 </p>
 
                 {alreadySubmittedEmail && (
                   <div className="already-applied-banner">
                     <Clock size={16} />
                     <span>
-                      Notice: You previously submitted an application with <strong>{alreadySubmittedEmail}</strong>. Submitting again with the same email will be rejected.
+                      Notice: You previously submitted an application with <strong>{alreadySubmittedEmail}</strong> for this cycle. Duplicate submissions will be rejected.
                     </span>
                   </div>
                 )}
