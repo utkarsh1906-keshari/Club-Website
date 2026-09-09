@@ -347,7 +347,7 @@ export default function JoinUs() {
                       id="email"
                       name="email"
                       required
-                      placeholder="e.g. yourname.roll@abes.ac.in or personal email"
+                      placeholder="e.g. yourname.admissionno@abes.ac.in"
                       value={formData.email}
                       onChange={handleChange}
                       className={isDuplicate ? 'input-error-highlight' : isNonCollegeEmail ? 'input-warning-highlight' : ''}
@@ -375,11 +375,11 @@ export default function JoinUs() {
                   </div>
                 )}
 
-                {/* 3. Student ID / Roll Number */}
+                {/* 3. Admission No. / Roll Number */}
                 {isQuestionActive('studentId') && (
                   <div className="form-group">
                     <label htmlFor="studentId">
-                      {activeQuestions.find(q => q.id === 'studentId')?.label || 'Student ID / Roll Number'}
+                      {activeQuestions.find(q => q.id === 'studentId')?.label?.replace('Student ID / Roll Number', 'Admission No. / Roll Number') || 'Admission No. / Roll Number'}
                       {activeQuestions.find(q => q.id === 'studentId')?.required && ' *'}
                     </label>
                     <input
@@ -387,7 +387,7 @@ export default function JoinUs() {
                       id="studentId"
                       name="studentId"
                       required={activeQuestions.find(q => q.id === 'studentId')?.required}
-                      placeholder="e.g. 2300320100012"
+                      placeholder="e.g. 2024B0101001 or Roll No."
                       value={formData.studentId}
                       onChange={handleChange}
                     />

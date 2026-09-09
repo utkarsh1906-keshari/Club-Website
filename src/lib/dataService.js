@@ -464,7 +464,7 @@ const SEED_GALLERY = [
 export const DEFAULT_FORM_QUESTIONS = [
   { id: 'name', label: 'Full Name', type: 'text', required: true, is_default: true, active: true },
   { id: 'email', label: 'College Email Address (@abes.ac.in recommended)', type: 'email', required: true, is_default: true, active: true },
-  { id: 'studentId', label: 'Student ID / Roll Number', type: 'text', required: true, is_default: true, active: true },
+  { id: 'studentId', label: 'Admission No. / Roll Number', type: 'text', required: true, is_default: true, active: true },
   { id: 'branch', label: 'Department / Academic Branch', type: 'text', required: true, is_default: true, active: true },
   { id: 'year', label: 'Current Year of Study', type: 'select', options: ['1st Year (Freshman)', '2nd Year (Sophomore)', '3rd Year (Junior)', '4th Year (Senior)'], required: true, is_default: true, active: true },
   { id: 'domain', label: 'Preferred Technical Domain', type: 'select', options: ['AI/ML', 'VLSI', 'Robotics & IoT', 'Drone Technology', 'None / Pure Management'], required: true, is_default: true, active: true },

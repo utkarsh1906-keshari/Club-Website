@@ -333,7 +333,7 @@ export default function ApplicationsAdmin() {
                     <td>
                       <div>{app.branch} ({app.year})</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                        ID: {app.student_id || app.studentId || 'N/A'}
+                        Adm/Roll No: {app.student_id || app.studentId || 'N/A'}
                       </div>
                     </td>
                     <td>
@@ -582,7 +582,7 @@ export default function ApplicationsAdmin() {
                 <strong>Email:</strong> {selectedApp.email}
               </div>
               <div>
-                <strong>Student ID:</strong> {selectedApp.student_id || selectedApp.studentId || 'N/A'}
+                <strong>Admission / Roll No:</strong> {selectedApp.student_id || selectedApp.studentId || 'N/A'}
               </div>
               <div>
                 <strong>Branch:</strong> {selectedApp.branch || 'N/A'}
