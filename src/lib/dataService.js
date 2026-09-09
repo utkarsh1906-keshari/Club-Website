@@ -461,9 +461,24 @@ const SEED_GALLERY = [
   }
 ];
 
+const SEED_RECRUITMENT_CYCLE = {
+  id: 'cycle-2026-2027',
+  title: 'Recruitment Drive 2026–2027',
+  subtitle: 'Join the premier drone and robotics engineering club at ABES EC.',
+  target_years: '1st & 2nd Year B.Tech Students',
+  deadline: '2026-10-31',
+  is_active: true,
+  closed_message: 'Recruitment for Drones & Robotics Club is currently closed. Follow our announcements or connect with our social handles for updates on future induction drives.',
+  allowed_domains: ['AI/ML', 'VLSI', 'Robotics & IoT', 'Drone Technology'],
+  allowed_roles: ['Technical', 'Management', 'Design', 'Media & Content'],
+  instructions: 'Please fill out your authentic academic and interest details. You may only apply once per recruitment cycle with your primary college email.',
+  updated_at: new Date().toISOString()
+};
+
 const SEED_APPLICATIONS = [
   {
     id: 'app-1',
+    cycle_id: 'cycle-2026-2027',
     name: 'Aarav Patel',
     email: 'aarav.p@college.edu',
     student_id: '2300320100012',
@@ -478,6 +493,7 @@ const SEED_APPLICATIONS = [
   },
   {
     id: 'app-2',
+    cycle_id: 'cycle-2026-2027',
     name: 'Devika Sharma',
     email: 'devika.s@college.edu',
     student_id: '2400320200045',
@@ -492,6 +508,7 @@ const SEED_APPLICATIONS = [
   },
   {
     id: 'app-3',
+    cycle_id: 'cycle-2026-2027',
     name: 'Rohan Gupta',
     email: 'rohan.g@college.edu',
     student_id: '2300320310088',
@@ -506,6 +523,7 @@ const SEED_APPLICATIONS = [
   },
   {
     id: 'app-4',
+    cycle_id: 'cycle-2026-2027',
     name: 'Ananya Roy',
     email: 'ananya.r@college.edu',
     student_id: '2400320100102',
@@ -928,26 +946,135 @@ export const galleryService = {
   }
 };
 
-export const applicationsService = {
-  async getAll() {
+export const recruitmentService = {
+  async getCycleConfig() {
     if (supabase) {
       try {
-        const { data, error } = await supabase.from('applications').select('*').order('created_at', { ascending: false });
+        const { data, error } = await supabase
+          .from('recruitment_cycles')
+          .select('*')
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (!error && data) return data;
+      } catch (err) {
+        console.warn('Supabase recruitment cycle fetch failed, using local fallback:', err);
+      }
+    }
+    return getLocal('recruitment_cycle', SEED_RECRUITMENT_CYCLE);
+  },
+
+  async updateCycleConfig(updates) {
+    const current = await this.getCycleConfig();
+    const updated = {
+      ...current,
+      ...updates,
+      updated_at: new Date().toISOString()
+    };
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('recruitment_cycles')
+          .upsert([updated])
+          .select()
+          .single();
+        if (!error && data) {
+          setLocal('recruitment_cycle', data);
+          return data;
+        }
+      } catch (err) {
+        console.warn('Supabase recruitment cycle update error:', err);
+      }
+    }
+    setLocal('recruitment_cycle', updated);
+    return updated;
+  },
+
+  async recreateCycle(newCycleData = {}) {
+    const newCycle = {
+      ...SEED_RECRUITMENT_CYCLE,
+      ...newCycleData,
+      id: 'cycle-' + Date.now(),
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('recruitment_cycles')
+          .insert([newCycle])
+          .select()
+          .single();
+        if (!error && data) {
+          setLocal('recruitment_cycle', data);
+          return data;
+        }
+      } catch (err) {
+        console.warn('Supabase recruitment cycle recreation error:', err);
+      }
+    }
+    setLocal('recruitment_cycle', newCycle);
+    return newCycle;
+  }
+};
+
+export const applicationsService = {
+  async getAll(cycleId = null) {
+    if (supabase) {
+      try {
+        let query = supabase.from('applications').select('*').order('created_at', { ascending: false });
+        if (cycleId) {
+          query = query.eq('cycle_id', cycleId);
+        }
+        const { data, error } = await query;
         if (!error && data && data.length > 0) return data;
       } catch (err) {
         console.warn('Supabase applications fetch failed, using local cache:', err);
       }
     }
-    return getLocal('applications', SEED_APPLICATIONS);
+    const all = getLocal('applications', SEED_APPLICATIONS);
+    if (cycleId) {
+      return all.filter(a => (a.cycle_id || 'cycle-2026-2027') === cycleId);
+    }
+    return all;
+  },
+
+  async checkEmailExists(email, cycleId = null) {
+    if (!email) return false;
+    const cleanEmail = email.trim().toLowerCase();
+    const all = await this.getAll(cycleId);
+    return all.some(a => (a.email || '').trim().toLowerCase() === cleanEmail);
   },
 
   async create(app) {
+    const cycle = await recruitmentService.getCycleConfig();
+
+    // 1. Check if recruitment cycle is active
+    if (!cycle.is_active) {
+      throw new Error('Recruitment is currently closed. New applications are not being accepted at this time.');
+    }
+
+    const cleanEmail = (app.email || '').trim().toLowerCase();
+    if (!cleanEmail) {
+      throw new Error('A valid email address is required.');
+    }
+
+    // 2. Check for duplicate email in this cycle
+    const isDuplicate = await this.checkEmailExists(cleanEmail, cycle.id);
+    if (isDuplicate) {
+      throw new Error(`An application with email "${app.email}" has already been submitted for the current cycle (${cycle.title}). Multiple submissions are not permitted.`);
+    }
+
     const newApp = {
       id: 'app-' + Date.now(),
       status: 'New',
+      cycle_id: cycle.id,
       created_at: new Date().toISOString(),
-      ...app
+      ...app,
+      email: cleanEmail
     };
+
     if (supabase) {
       try {
         const { data, error } = await supabase.from('applications').insert([newApp]).select().single();

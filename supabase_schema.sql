@@ -100,9 +100,26 @@ CREATE TABLE IF NOT EXISTS public.gallery (
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 7. RECRUITMENT APPLICATIONS TABLE
+-- 7. RECRUITMENT CYCLES TABLE
+CREATE TABLE IF NOT EXISTS public.recruitment_cycles (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    subtitle TEXT,
+    target_years TEXT,
+    deadline DATE,
+    is_active BOOLEAN DEFAULT true,
+    closed_message TEXT,
+    allowed_domains JSONB DEFAULT '["AI/ML", "VLSI", "Robotics & IoT", "Drone Technology"]'::jsonb,
+    allowed_roles JSONB DEFAULT '["Technical", "Management", "Design", "Media & Content"]'::jsonb,
+    instructions TEXT,
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 8. RECRUITMENT APPLICATIONS TABLE
 CREATE TABLE IF NOT EXISTS public.applications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    cycle_id TEXT NOT NULL DEFAULT 'cycle-2026-2027',
     name TEXT NOT NULL,
     email TEXT NOT NULL,
     student_id TEXT NOT NULL,
@@ -118,7 +135,11 @@ CREATE TABLE IF NOT EXISTS public.applications (
     updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 8. ANNOUNCEMENTS TABLE
+-- Enforce one application per email per recruitment cycle
+CREATE UNIQUE INDEX IF NOT EXISTS unique_application_email_per_cycle 
+    ON public.applications (lower(email), cycle_id);
+
+-- 9. ANNOUNCEMENTS TABLE
 CREATE TABLE IF NOT EXISTS public.announcements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title TEXT NOT NULL,
@@ -152,6 +173,7 @@ ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gallery ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.recruitment_cycles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_users ENABLE ROW LEVEL SECURITY;
@@ -162,6 +184,7 @@ CREATE POLICY "Public Read Projects" ON public.projects FOR SELECT USING (true);
 CREATE POLICY "Public Read Events" ON public.events FOR SELECT USING (true);
 CREATE POLICY "Public Read Members" ON public.members FOR SELECT USING (true);
 CREATE POLICY "Public Read Gallery" ON public.gallery FOR SELECT USING (true);
+CREATE POLICY "Public Read Recruitment Cycles" ON public.recruitment_cycles FOR SELECT USING (true);
 CREATE POLICY "Public Read Active Announcements" ON public.announcements FOR SELECT USING (is_active = true);
 
 -- Public submission policies
@@ -175,6 +198,7 @@ CREATE POLICY "Admin Full Access Events" ON public.events FOR ALL USING (auth.ro
 CREATE POLICY "Admin Full Access Registrations" ON public.event_registrations FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Admin Full Access Members" ON public.members FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Admin Full Access Gallery" ON public.gallery FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Admin Full Access Recruitment Cycles" ON public.recruitment_cycles FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Admin Full Access Applications" ON public.applications FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Admin Full Access Announcements" ON public.announcements FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Admin Full Access Users" ON public.admin_users FOR ALL USING (auth.role() = 'authenticated');
