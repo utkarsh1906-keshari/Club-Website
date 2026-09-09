@@ -1,19 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, ArrowUpRight, Award, ShieldCheck, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { membersService } from '../lib/dataService';
+import { membersService, teamCategoriesService } from '../lib/dataService';
 import './Team.css';
 
 export default function Team() {
   const [members, setMembers] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadMembers() {
       setLoading(true);
       try {
-        const data = await membersService.getAll();
+        const [data, cats] = await Promise.all([
+          membersService.getAll(),
+          teamCategoriesService.getAll()
+        ]);
         setMembers(data);
+        setCategories(cats);
       } catch (err) {
         console.error('Failed to load members:', err);
       } finally {
@@ -26,6 +31,7 @@ export default function Team() {
   const executiveTeam = members.filter(m => m.category === 'leadership');
   const technicalTeam = members.filter(m => m.category === 'technical');
   const managementTeam = members.filter(m => m.category === 'management');
+  const customCategories = categories.filter(c => !['leadership', 'technical', 'management'].includes(c.id));
 
   return (
     <div className="team-page">
@@ -120,6 +126,45 @@ export default function Team() {
           </div>
         </div>
       </section>
+
+      {/* Dynamic Custom Categories */}
+      {customCategories.map((cat, catIdx) => {
+        const catMembers = members.filter(m => m.category === cat.id);
+        if (catMembers.length === 0) return null;
+        return (
+          <section key={cat.id} className={`section-padding ${catIdx % 2 === 0 ? 'bg-surface-alt' : ''}`}>
+            <div className="container">
+              <div className="section-header text-center mb-4">
+                <span className="section-label">Club Community</span>
+                <h2 className="section-title">{cat.label}</h2>
+                <div className="heading-line-maroon" style={{ margin: '0.5rem auto 1.5rem auto', width: '60px', height: '3px', background: '#7b181e' }}></div>
+              </div>
+
+              <div className="student-leads-grid">
+                {catMembers.map((m, idx) => (
+                  <div key={m.id || idx} className="aesthetic-card student-lead-card">
+                    <div className="lead-card-header">
+                      <span className="lead-dept-pill">{m.department || cat.label}</span>
+                    </div>
+                    {m.image_url && (
+                      <div style={{ marginBottom: '0.75rem', textAlign: 'center' }}>
+                        <img
+                          src={m.image_url}
+                          alt={m.name}
+                          style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(123, 24, 30, 0.2)' }}
+                        />
+                      </div>
+                    )}
+                    <h3 className="lead-name">{m.name}</h3>
+                    <span className="lead-role">{m.designation || m.role}</span>
+                    <p className="lead-desc">{m.bio || m.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        );
+      })}
 
       {/* Join Team CTA */}
       <section className="section-padding">

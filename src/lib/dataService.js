@@ -909,6 +909,74 @@ export const membersService = {
   }
 };
 
+export const DEFAULT_TEAM_CATEGORIES = [
+  { id: 'leadership', label: 'Club Leadership', badgeColor: '#eff6ff', textColor: '#1d4ed8', is_default: true },
+  { id: 'technical', label: 'Technical Domain Lead', badgeColor: '#f0fdf4', textColor: '#15803d', is_default: true },
+  { id: 'management', label: 'Creative & Management Team', badgeColor: '#fefce8', textColor: '#a16207', is_default: true }
+];
+
+export const teamCategoriesService = {
+  async getAll() {
+    const custom = getLocal('team_categories', []);
+    const map = new Map();
+    DEFAULT_TEAM_CATEGORIES.forEach(c => map.set(c.id, c));
+    custom.forEach(c => map.set(c.id, c));
+
+    // Ensure any categories currently assigned to members exist in the list
+    const allMembers = getLocal('members', SEED_MEMBERS);
+    allMembers.forEach(m => {
+      if (m.category && !map.has(m.category)) {
+        const title = m.category.charAt(0).toUpperCase() + m.category.slice(1).replace(/[-_]/g, ' ');
+        map.set(m.category, { id: m.category, label: title, is_default: false });
+      }
+    });
+
+    return Array.from(map.values());
+  },
+
+  async create(name) {
+    const trimmed = (name || '').trim();
+    if (!trimmed) throw new Error('Category name cannot be empty.');
+
+    const id = trimmed
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+
+    if (!id) throw new Error('Invalid category name.');
+
+    const current = await this.getAll();
+    const existing = current.find(c => c.id === id || c.label.toLowerCase() === trimmed.toLowerCase());
+    if (existing) {
+      return existing;
+    }
+
+    const newCat = {
+      id,
+      label: trimmed,
+      badgeColor: '#f3e8ff',
+      textColor: '#7e22ce',
+      is_default: false,
+      created_at: new Date().toISOString()
+    };
+
+    const custom = getLocal('team_categories', []);
+    const updatedCustom = [...custom, newCat];
+    setLocal('team_categories', updatedCustom);
+    return newCat;
+  },
+
+  async delete(id) {
+    if (['leadership', 'technical', 'management'].includes(id)) {
+      throw new Error('Default categories cannot be deleted.');
+    }
+    const custom = getLocal('team_categories', []);
+    const updatedCustom = custom.filter(c => c.id !== id);
+    setLocal('team_categories', updatedCustom);
+    return true;
+  }
+};
+
 export const galleryService = {
   async getAll() {
     if (supabase) {

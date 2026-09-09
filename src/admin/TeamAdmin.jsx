@@ -5,15 +5,22 @@ import {
   Trash2, 
   Search, 
   X, 
-  AlertTriangle 
+  AlertTriangle,
+  Tag
 } from 'lucide-react';
-import { membersService } from '../lib/dataService';
+import { membersService, teamCategoriesService, DEFAULT_TEAM_CATEGORIES } from '../lib/dataService';
 
 export default function TeamAdmin() {
   const [members, setMembers] = useState([]);
+  const [categories, setCategories] = useState(DEFAULT_TEAM_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+
+  // Category creation in modal
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryInput, setNewCategoryInput] = useState('');
+  const [categoryError, setCategoryError] = useState('');
 
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -39,10 +46,14 @@ export default function TeamAdmin() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const mList = await membersService.getAll();
+      const [mList, cList] = await Promise.all([
+        membersService.getAll(),
+        teamCategoriesService.getAll()
+      ]);
       setMembers(mList);
+      setCategories(cList);
     } catch (err) {
-      console.error('Failed to load roster:', err);
+      console.error('Failed to load roster or categories:', err);
     } finally {
       setLoading(false);
     }
@@ -51,6 +62,25 @@ export default function TeamAdmin() {
   useEffect(() => {
     loadData();
   }, []);
+
+  const handleCreateCategory = async () => {
+    const trimmed = (newCategoryInput || '').trim();
+    if (!trimmed) {
+      setCategoryError('Please enter a category name.');
+      return;
+    }
+    setCategoryError('');
+    try {
+      const created = await teamCategoriesService.create(trimmed);
+      const updatedList = await teamCategoriesService.getAll();
+      setCategories(updatedList);
+      setFormData(prev => ({ ...prev, category: created.id }));
+      setNewCategoryInput('');
+      setIsAddingCategory(false);
+    } catch (err) {
+      setCategoryError(err.message || 'Failed to create category.');
+    }
+  };
 
   const handleOpenCreate = () => {
     setEditingMember(null);
@@ -168,7 +198,7 @@ export default function TeamAdmin() {
           />
         </div>
 
-        <div style={{ display: 'flex', gap: '0.4rem' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
           <button
             type="button"
             className={`btn btn-secondary ${categoryFilter === 'all' ? 'btn-primary' : ''}`}
@@ -177,30 +207,20 @@ export default function TeamAdmin() {
           >
             All Members ({members.length})
           </button>
-          <button
-            type="button"
-            className={`btn btn-secondary ${categoryFilter === 'leadership' ? 'btn-primary' : ''}`}
-            onClick={() => setCategoryFilter('leadership')}
-            style={{ padding: '0.4rem 0.85rem', fontSize: '0.82rem' }}
-          >
-            Executive Leadership ({members.filter(m => m.category === 'leadership').length})
-          </button>
-          <button
-            type="button"
-            className={`btn btn-secondary ${categoryFilter === 'technical' ? 'btn-primary' : ''}`}
-            onClick={() => setCategoryFilter('technical')}
-            style={{ padding: '0.4rem 0.85rem', fontSize: '0.82rem' }}
-          >
-            Technical Leads ({members.filter(m => m.category === 'technical').length})
-          </button>
-          <button
-            type="button"
-            className={`btn btn-secondary ${categoryFilter === 'management' ? 'btn-primary' : ''}`}
-            onClick={() => setCategoryFilter('management')}
-            style={{ padding: '0.4rem 0.85rem', fontSize: '0.82rem' }}
-          >
-            Creative &amp; Management ({members.filter(m => m.category === 'management').length})
-          </button>
+          {categories.map(cat => {
+            const count = members.filter(m => m.category === cat.id).length;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                className={`btn btn-secondary ${categoryFilter === cat.id ? 'btn-primary' : ''}`}
+                onClick={() => setCategoryFilter(cat.id)}
+                style={{ padding: '0.4rem 0.85rem', fontSize: '0.82rem' }}
+              >
+                {cat.label} ({count})
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -254,10 +274,10 @@ export default function TeamAdmin() {
                     </td>
                     <td>
                       <span className="tag-pill" style={{
-                        background: m.category === 'leadership' ? '#eff6ff' : m.category === 'technical' ? '#f0fdf4' : '#fefce8',
-                        color: m.category === 'leadership' ? '#1d4ed8' : m.category === 'technical' ? '#15803d' : '#a16207'
+                        background: m.category === 'leadership' ? '#eff6ff' : m.category === 'technical' ? '#f0fdf4' : m.category === 'management' ? '#fefce8' : '#f3e8ff',
+                        color: m.category === 'leadership' ? '#1d4ed8' : m.category === 'technical' ? '#15803d' : m.category === 'management' ? '#a16207' : '#7e22ce'
                       }}>
-                        {m.category.toUpperCase()}
+                        {(categories.find(c => c.id === m.category)?.label || m.category || '').toUpperCase()}
                       </span>
                     </td>
                     <td>
@@ -317,16 +337,109 @@ export default function TeamAdmin() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Category *</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                    <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Category *</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAddingCategory(!isAddingCategory);
+                        setCategoryError('');
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--color-primary)',
+                        fontSize: '0.78rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        padding: 0
+                      }}
+                    >
+                      {isAddingCategory ? 'Hide' : '+ Create Category'}
+                    </button>
+                  </div>
                   <select
                     value={formData.category}
-                    onChange={e => setFormData({ ...formData, category: e.target.value })}
+                    onChange={e => {
+                      if (e.target.value === '__new__') {
+                        setIsAddingCategory(true);
+                      } else {
+                        setFormData({ ...formData, category: e.target.value });
+                      }
+                    }}
                     style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
                   >
-                    <option value="leadership">Club Leadership</option>
-                    <option value="technical">Technical Domain Lead</option>
-                    <option value="management">Creative &amp; Management Team</option>
+                    {categories.map(c => (
+                      <option key={c.id} value={c.id}>{c.label}</option>
+                    ))}
+                    <option value="__new__">+ Create More Categories...</option>
                   </select>
+
+                  {isAddingCategory && (
+                    <div style={{
+                      marginTop: '0.5rem',
+                      padding: '0.65rem 0.75rem',
+                      background: 'var(--color-bg-elevated)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '6px'
+                    }}>
+                      <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.35rem' }}>
+                        CREATE NEW CATEGORY
+                      </span>
+                      <div style={{ display: 'flex', gap: '0.4rem' }}>
+                        <input
+                          type="text"
+                          placeholder="e.g. Advisory Board, Mentors, Hardware Wing..."
+                          value={newCategoryInput}
+                          onChange={e => {
+                            setNewCategoryInput(e.target.value);
+                            if (categoryError) setCategoryError('');
+                          }}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleCreateCategory();
+                            }
+                          }}
+                          autoFocus
+                          style={{
+                            flex: 1,
+                            padding: '0.45rem 0.65rem',
+                            fontSize: '0.85rem',
+                            borderRadius: '4px',
+                            border: '1px solid var(--color-primary)',
+                            background: 'var(--color-bg-surface)',
+                            color: 'var(--color-text-primary)'
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={handleCreateCategory}
+                          style={{ padding: '0.45rem 0.75rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
+                        >
+                          Save
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => {
+                            setIsAddingCategory(false);
+                            setNewCategoryInput('');
+                            setCategoryError('');
+                          }}
+                          style={{ padding: '0.45rem 0.6rem', fontSize: '0.8rem' }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                      {categoryError && (
+                        <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '0.35rem' }}>
+                          {categoryError}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div>
