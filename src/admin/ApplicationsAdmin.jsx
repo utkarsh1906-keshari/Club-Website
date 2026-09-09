@@ -7,13 +7,7 @@ import {
   AlertTriangle,
   Power,
   Settings,
-  PlusCircle,
-  CheckCircle2,
-  Calendar,
-  Users,
-  ShieldCheck,
-  RefreshCw,
-  Clock
+  PlusCircle
 } from 'lucide-react';
 import { applicationsService, recruitmentService } from '../lib/dataService';
 
@@ -185,91 +179,82 @@ export default function ApplicationsAdmin() {
     <div className="admin-page-container">
       {/* Header */}
       <div className="admin-page-header" style={{ marginBottom: '1.75rem' }}>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Recruitment &amp; Join Us Control</h1>
+        <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Join Us Applications</h1>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem' }}>
-          Control live recruitment cycle availability, configure or recreate the candidate form, and triage submissions with email duplicate protection.
+          Review candidate submissions, manage application statuses, and control recruitment cycles.
         </p>
       </div>
 
-      {/* RECRUITMENT CYCLE CONTROL BANNER */}
+      {/* RECRUITMENT CYCLE CONTROL */}
       {cycleConfig && (
         <div 
           className="aesthetic-card" 
           style={{ 
-            marginBottom: '2rem', 
-            padding: '1.5rem 1.75rem',
-            borderLeft: `4px solid ${cycleConfig.is_active ? 'var(--color-accent-emerald, #059669)' : '#dc2626'}`,
-            background: 'var(--color-bg-surface)'
+            marginBottom: '1.75rem', 
+            padding: '1.25rem 1.75rem',
+            background: 'var(--color-bg-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--radius-lg, 14px)'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.25rem' }}>
-            {/* Left: Status & Details */}
-            <div style={{ flex: '1', minWidth: '280px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            {/* Left: Cycle Details */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.35rem' }}>
+                <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+                  {cycleConfig.title}
+                </h2>
                 <span 
                   className={`status-pill ${cycleConfig.is_active ? 'status-active' : 'status-closed'}`}
-                  style={{ fontSize: '0.8rem', padding: '0.25rem 0.75rem' }}
+                  style={{ fontSize: '0.75rem', padding: '0.2rem 0.65rem' }}
                 >
                   <span className={`status-dot ${!cycleConfig.is_active ? 'status-dot-inactive' : ''}`}></span>
-                  {cycleConfig.is_active ? 'RECRUITMENT ACTIVE (Open)' : 'RECRUITMENT INACTIVE (Closed)'}
-                </span>
-
-                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                  <ShieldCheck size={14} color="var(--color-primary)" /> Duplicate email protection active
+                  {cycleConfig.is_active ? 'Active' : 'Closed'}
                 </span>
               </div>
 
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.35rem', color: 'var(--color-text-primary)' }}>
-                {cycleConfig.title}
-              </h2>
-
-              <div style={{ display: 'flex', gap: '1.25rem', fontSize: '0.825rem', color: 'var(--color-text-secondary)', flexWrap: 'wrap' }}>
-                <span><strong>Target:</strong> {cycleConfig.target_years || 'All Batches'}</span>
-                <span><strong>Deadline:</strong> {cycleConfig.deadline ? new Date(cycleConfig.deadline).toLocaleDateString() : 'Open'}</span>
-                <span><strong>Active Cycle Submissions:</strong> <span style={{ color: 'var(--color-primary)', fontWeight: 700 }}>{activeCycleAppsCount}</span></span>
+              <div style={{ display: 'flex', gap: '1.15rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', flexWrap: 'wrap' }}>
+                {cycleConfig.target_years && <span>Target: <strong>{cycleConfig.target_years}</strong></span>}
+                {cycleConfig.deadline && <span>Deadline: <strong>{new Date(cycleConfig.deadline).toLocaleDateString()}</strong></span>}
+                <span>Submissions: <strong>{activeCycleAppsCount}</strong></span>
               </div>
             </div>
 
             {/* Right: Actions */}
-            <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              {/* Toggle Active / Inactive */}
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <button
                 type="button"
                 disabled={cycleLoading}
                 onClick={handleToggleCycleStatus}
-                className="btn"
+                className="btn btn-secondary"
                 style={{
-                  fontSize: '0.85rem',
-                  padding: '0.55rem 1.15rem',
-                  background: cycleConfig.is_active ? '#fee2e2' : '#dcfce7',
-                  color: cycleConfig.is_active ? '#991b1b' : '#166534',
-                  border: `1px solid ${cycleConfig.is_active ? '#fca5a5' : '#86efac'}`
+                  fontSize: '0.825rem',
+                  padding: '0.5rem 1rem',
+                  color: cycleConfig.is_active ? '#dc2626' : 'var(--color-accent-emerald)'
                 }}
               >
-                <Power size={15} />
-                {cycleConfig.is_active ? 'Pause / Close Recruitment' : 'Activate / Open Recruitment'}
+                <Power size={14} />
+                {cycleConfig.is_active ? 'Close Applications' : 'Open Applications'}
               </button>
 
-              {/* Configure Form */}
               <button
                 type="button"
                 onClick={() => setShowConfigModal(true)}
                 className="btn btn-secondary"
-                style={{ fontSize: '0.85rem', padding: '0.55rem 1rem' }}
+                style={{ fontSize: '0.825rem', padding: '0.5rem 0.95rem' }}
               >
-                <Settings size={15} />
+                <Settings size={14} />
                 Configure Form
               </button>
 
-              {/* Recreate / Start New Cycle */}
               <button
                 type="button"
                 onClick={() => setShowRecreateModal(true)}
                 className="btn btn-primary"
-                style={{ fontSize: '0.85rem', padding: '0.55rem 1rem' }}
+                style={{ fontSize: '0.825rem', padding: '0.5rem 1rem' }}
               >
-                <PlusCircle size={15} />
-                + Recreate / New Cycle
+                <PlusCircle size={14} />
+                New Cycle
               </button>
             </div>
           </div>
