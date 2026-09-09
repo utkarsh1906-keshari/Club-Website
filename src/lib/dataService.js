@@ -461,6 +461,18 @@ const SEED_GALLERY = [
   }
 ];
 
+export const DEFAULT_FORM_QUESTIONS = [
+  { id: 'name', label: 'Full Name', type: 'text', required: true, is_default: true, active: true },
+  { id: 'email', label: 'College Email Address', type: 'email', required: true, is_default: true, active: true },
+  { id: 'studentId', label: 'Student ID / Roll Number', type: 'text', required: true, is_default: true, active: true },
+  { id: 'branch', label: 'Department / Academic Branch', type: 'text', required: true, is_default: true, active: true },
+  { id: 'year', label: 'Current Year of Study', type: 'select', options: ['1st Year (Freshman)', '2nd Year (Sophomore)', '3rd Year (Junior)', '4th Year (Senior)'], required: true, is_default: true, active: true },
+  { id: 'domain', label: 'Preferred Technical Domain', type: 'select', options: ['AI/ML', 'VLSI', 'Robotics & IoT', 'Drone Technology', 'None / Pure Management'], required: true, is_default: true, active: true },
+  { id: 'role', label: 'Functional or Technical Role', type: 'select', options: ['Technical Developer / Engineer', 'Creative & UI/UX Design', 'Social Media & Communications', 'Events & Operations', 'PR & Corporate Outreach', 'Technical Content & Documentation', 'Other Functional Role'], required: true, is_default: true, active: true },
+  { id: 'portfolio', label: 'GitHub / Portfolio Link', type: 'url', required: false, is_default: true, active: true },
+  { id: 'reason', label: 'Why do you want to join the Drone & Robotics Club?', type: 'textarea', required: true, is_default: true, active: true }
+];
+
 const SEED_RECRUITMENT_CYCLE = {
   id: 'cycle-2026-2027',
   title: 'Recruitment Drive 2026–2027',
@@ -472,6 +484,7 @@ const SEED_RECRUITMENT_CYCLE = {
   allowed_domains: ['AI/ML', 'VLSI', 'Robotics & IoT', 'Drone Technology'],
   allowed_roles: ['Technical', 'Management', 'Design', 'Media & Content'],
   instructions: 'Please fill out your authentic academic and interest details. You may only apply once per recruitment cycle with your primary college email.',
+  questions: DEFAULT_FORM_QUESTIONS,
   updated_at: new Date().toISOString()
 };
 
@@ -948,6 +961,7 @@ export const galleryService = {
 
 export const recruitmentService = {
   async getCycleConfig() {
+    let base = SEED_RECRUITMENT_CYCLE;
     if (supabase) {
       try {
         const { data, error } = await supabase
@@ -956,12 +970,15 @@ export const recruitmentService = {
           .order('updated_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        if (!error && data) return data;
+        if (!error && data) base = { ...SEED_RECRUITMENT_CYCLE, ...data };
       } catch (err) {
         console.warn('Supabase recruitment cycle fetch failed, using local fallback:', err);
       }
+    } else {
+      base = getLocal('recruitment_cycle', SEED_RECRUITMENT_CYCLE);
     }
-    return getLocal('recruitment_cycle', SEED_RECRUITMENT_CYCLE);
+    const questions = getLocal('recruitment_form_questions', base.questions || DEFAULT_FORM_QUESTIONS);
+    return { ...base, questions };
   },
 
   async updateCycleConfig(updates) {
@@ -971,6 +988,9 @@ export const recruitmentService = {
       ...updates,
       updated_at: new Date().toISOString()
     };
+    if (updates.questions) {
+      setLocal('recruitment_form_questions', updates.questions);
+    }
     if (supabase) {
       try {
         const { data, error } = await supabase
@@ -980,13 +1000,53 @@ export const recruitmentService = {
           .single();
         if (!error && data) {
           setLocal('recruitment_cycle', data);
-          return data;
+          return { ...data, questions: updated.questions };
         }
       } catch (err) {
         console.warn('Supabase recruitment cycle update error:', err);
       }
     }
     setLocal('recruitment_cycle', updated);
+    return updated;
+  },
+
+  async getQuestions() {
+    const config = await this.getCycleConfig();
+    return config.questions || DEFAULT_FORM_QUESTIONS;
+  },
+
+  async saveQuestions(questions) {
+    setLocal('recruitment_form_questions', questions);
+    return this.updateCycleConfig({ questions });
+  },
+
+  async addQuestion(newQuestion) {
+    const currentQuestions = await this.getQuestions();
+    const questionObj = {
+      id: 'q_' + Date.now(),
+      label: newQuestion.label,
+      type: newQuestion.type || 'text',
+      required: !!newQuestion.required,
+      options: newQuestion.options || [],
+      active: true,
+      is_default: false
+    };
+    const updated = [...currentQuestions, questionObj];
+    await this.saveQuestions(updated);
+    return updated;
+  },
+
+  async removeQuestion(questionId) {
+    const currentQuestions = await this.getQuestions();
+    const updated = currentQuestions.filter(q => q.id !== questionId);
+    await this.saveQuestions(updated);
+    return updated;
+  },
+
+  async toggleQuestion(questionId) {
+    const currentQuestions = await this.getQuestions();
+    const updated = currentQuestions.map(q => q.id === questionId ? { ...q, active: !q.active } : q);
+    await this.saveQuestions(updated);
     return updated;
   },
 

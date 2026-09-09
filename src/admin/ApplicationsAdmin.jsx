@@ -6,10 +6,13 @@ import {
   X, 
   AlertTriangle,
   Power,
-  Settings,
-  PlusCircle
+  SlidersHorizontal,
+  Plus,
+  Check,
+  Eye,
+  EyeOff
 } from 'lucide-react';
-import { applicationsService, recruitmentService } from '../lib/dataService';
+import { applicationsService, recruitmentService, DEFAULT_FORM_QUESTIONS } from '../lib/dataService';
 
 export default function ApplicationsAdmin() {
   const [applications, setApplications] = useState([]);
@@ -17,31 +20,19 @@ export default function ApplicationsAdmin() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [domainFilter, setDomainFilter] = useState('all');
-  const [cycleFilter, setCycleFilter] = useState('all');
 
-  // Recruitment Cycle State
+  // Recruitment Status & Questions
   const [cycleConfig, setCycleConfig] = useState(null);
   const [cycleLoading, setCycleLoading] = useState(false);
-  const [showConfigModal, setShowConfigModal] = useState(false);
-  const [showRecreateModal, setShowRecreateModal] = useState(false);
+  const [questions, setQuestions] = useState([]);
+  const [showQuestionsModal, setShowQuestionsModal] = useState(false);
 
-  // Forms for modals
-  const [configForm, setConfigForm] = useState({
-    title: '',
-    subtitle: '',
-    target_years: '',
-    deadline: '',
-    closed_message: '',
-    instructions: ''
-  });
-
-  const [recreateForm, setRecreateForm] = useState({
-    title: 'Recruitment Drive 2026–2027',
-    subtitle: 'Join the premier drone and robotics engineering club at ABES EC.',
-    target_years: '1st & 2nd Year B.Tech Students',
-    deadline: '2026-11-15',
-    closed_message: 'Recruitment for Drones & Robotics Club is currently closed. Follow our announcements for updates on upcoming induction drives.',
-    instructions: 'Please fill out your authentic academic and interest details. You may only apply once per recruitment cycle with your primary college email.'
+  // New question form state
+  const [newQuestion, setNewQuestion] = useState({
+    label: '',
+    type: 'text',
+    required: false,
+    optionsStr: ''
   });
 
   // Selected detail modal
@@ -51,24 +42,16 @@ export default function ApplicationsAdmin() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [appsData, cycleData] = await Promise.all([
+      const [appsData, cycleData, questionsData] = await Promise.all([
         applicationsService.getAll(),
-        recruitmentService.getCycleConfig()
+        recruitmentService.getCycleConfig(),
+        recruitmentService.getQuestions()
       ]);
       setApplications(appsData);
       setCycleConfig(cycleData);
-      if (cycleData) {
-        setConfigForm({
-          title: cycleData.title || '',
-          subtitle: cycleData.subtitle || '',
-          target_years: cycleData.target_years || '',
-          deadline: cycleData.deadline || '',
-          closed_message: cycleData.closed_message || '',
-          instructions: cycleData.instructions || ''
-        });
-      }
+      setQuestions(questionsData || DEFAULT_FORM_QUESTIONS);
     } catch (err) {
-      console.error('Failed to load applications / cycle data:', err);
+      console.error('Failed to load applications / questions data:', err);
     } finally {
       setLoading(false);
     }
@@ -78,7 +61,7 @@ export default function ApplicationsAdmin() {
     loadData();
   }, []);
 
-  // Toggle cycle active status
+  // Single-click toggle: Open / Close joining application
   const handleToggleCycleStatus = async () => {
     if (!cycleConfig) return;
     setCycleLoading(true);
@@ -94,36 +77,51 @@ export default function ApplicationsAdmin() {
     }
   };
 
-  // Save Cycle Config
-  const handleSaveConfig = async (e) => {
+  // Add a new question to the application form
+  const handleAddQuestion = async (e) => {
     e.preventDefault();
-    setCycleLoading(true);
+    if (!newQuestion.label.trim()) return;
+
     try {
-      const updated = await recruitmentService.updateCycleConfig(configForm);
-      setCycleConfig(updated);
-      setShowConfigModal(false);
+      const options = newQuestion.type === 'select'
+        ? newQuestion.optionsStr.split(',').map(s => s.trim()).filter(Boolean)
+        : [];
+
+      const updated = await recruitmentService.addQuestion({
+        label: newQuestion.label.trim(),
+        type: newQuestion.type,
+        required: newQuestion.required,
+        options
+      });
+      setQuestions(updated);
+      setNewQuestion({
+        label: '',
+        type: 'text',
+        required: false,
+        optionsStr: ''
+      });
     } catch (err) {
-      console.error('Failed to update cycle config:', err);
-    } finally {
-      setCycleLoading(false);
+      console.error('Failed to add question:', err);
     }
   };
 
-  // Recreate / Launch New Cycle
-  const handleRecreateCycle = async (e) => {
-    e.preventDefault();
-    setCycleLoading(true);
+  // Remove a question from the application form
+  const handleRemoveQuestion = async (questionId) => {
     try {
-      const newCycle = await recruitmentService.recreateCycle(recreateForm);
-      setCycleConfig(newCycle);
-      setShowRecreateModal(false);
-      // Reload applications
-      const apps = await applicationsService.getAll();
-      setApplications(apps);
+      const updated = await recruitmentService.removeQuestion(questionId);
+      setQuestions(updated);
     } catch (err) {
-      console.error('Failed to recreate cycle:', err);
-    } finally {
-      setCycleLoading(false);
+      console.error('Failed to remove question:', err);
+    }
+  };
+
+  // Toggle active/inactive for any question
+  const handleToggleQuestion = async (questionId) => {
+    try {
+      const updated = await recruitmentService.toggleQuestion(questionId);
+      setQuestions(updated);
+    } catch (err) {
+      console.error('Failed to toggle question:', err);
     }
   };
 
@@ -152,15 +150,9 @@ export default function ApplicationsAdmin() {
     }
   };
 
-  // Extract unique cycle IDs from applications
-  const uniqueCycles = Array.from(new Set(applications.map(a => a.cycle_id || 'cycle-2026-2027')));
-
   const filteredApps = applications.filter(app => {
     const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
     const matchesDomain = domainFilter === 'all' || app.domain === domainFilter;
-    const appCycle = app.cycle_id || 'cycle-2026-2027';
-    const matchesCycle = cycleFilter === 'all' || appCycle === cycleFilter;
-
     const q = search.toLowerCase();
     const matchesSearch = 
       app.name?.toLowerCase().includes(q) ||
@@ -168,93 +160,78 @@ export default function ApplicationsAdmin() {
       (app.student_id || app.studentId)?.toLowerCase().includes(q) ||
       app.branch?.toLowerCase().includes(q);
 
-    return matchesStatus && matchesDomain && matchesCycle && matchesSearch;
+    return matchesStatus && matchesDomain && matchesSearch;
   });
 
-  const activeCycleAppsCount = applications.filter(
-    a => (a.cycle_id || 'cycle-2026-2027') === cycleConfig?.id
-  ).length;
+  const activeQuestionsCount = questions.filter(q => q.active !== false).length;
 
   return (
     <div className="admin-page-container">
-      {/* Header */}
-      <div className="admin-page-header" style={{ marginBottom: '1.75rem' }}>
+      {/* Top Header */}
+      <div className="admin-page-header" style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Join Us Applications</h1>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem' }}>
-          Review candidate submissions, manage application statuses, and control recruitment cycles.
+          Open or close the joining portal and customize application form questions.
         </p>
       </div>
 
-      {/* RECRUITMENT CYCLE CONTROL */}
+      {/* ULTRA-CLEAN CONTROL BAR: Open/Close & Form Questions Only */}
       {cycleConfig && (
         <div 
           className="aesthetic-card" 
           style={{ 
             marginBottom: '1.75rem', 
-            padding: '1.25rem 1.75rem',
+            padding: '1.15rem 1.6rem',
             background: 'var(--color-bg-surface)',
             border: '1px solid var(--color-border)',
             borderRadius: 'var(--radius-lg, 14px)'
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-            {/* Left: Cycle Details */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.35rem' }}>
-                <h2 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
-                  {cycleConfig.title}
-                </h2>
-                <span 
-                  className={`status-pill ${cycleConfig.is_active ? 'status-active' : 'status-closed'}`}
-                  style={{ fontSize: '0.75rem', padding: '0.2rem 0.65rem' }}
-                >
-                  <span className={`status-dot ${!cycleConfig.is_active ? 'status-dot-inactive' : ''}`}></span>
-                  {cycleConfig.is_active ? 'Active' : 'Closed'}
-                </span>
-              </div>
-
-              <div style={{ display: 'flex', gap: '1.15rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', flexWrap: 'wrap' }}>
-                {cycleConfig.target_years && <span>Target: <strong>{cycleConfig.target_years}</strong></span>}
-                {cycleConfig.deadline && <span>Deadline: <strong>{new Date(cycleConfig.deadline).toLocaleDateString()}</strong></span>}
-                <span>Submissions: <strong>{activeCycleAppsCount}</strong></span>
-              </div>
+            {/* Left: Status */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <h2 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
+                Joining Applications
+              </h2>
+              <span 
+                className={`status-pill ${cycleConfig.is_active ? 'status-active' : 'status-closed'}`}
+                style={{ fontSize: '0.78rem', padding: '0.25rem 0.75rem' }}
+              >
+                <span className={`status-dot ${!cycleConfig.is_active ? 'status-dot-inactive' : ''}`}></span>
+                {cycleConfig.is_active ? 'Open' : 'Closed'}
+              </span>
             </div>
 
-            {/* Right: Actions */}
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* Right: Toggle Open/Close & Question Manager */}
+            <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              {/* Open / Close Button */}
               <button
                 type="button"
                 disabled={cycleLoading}
                 onClick={handleToggleCycleStatus}
                 className="btn btn-secondary"
                 style={{
-                  fontSize: '0.825rem',
-                  padding: '0.5rem 1rem',
-                  color: cycleConfig.is_active ? '#dc2626' : 'var(--color-accent-emerald)'
+                  fontSize: '0.85rem',
+                  padding: '0.5rem 1.1rem',
+                  fontWeight: 600,
+                  color: cycleConfig.is_active ? '#dc2626' : '#166534',
+                  border: `1px solid ${cycleConfig.is_active ? '#fca5a5' : '#86efac'}`,
+                  background: cycleConfig.is_active ? '#fee2e2' : '#dcfce7'
                 }}
               >
                 <Power size={14} />
                 {cycleConfig.is_active ? 'Close Applications' : 'Open Applications'}
               </button>
 
+              {/* Manage Form Questions */}
               <button
                 type="button"
-                onClick={() => setShowConfigModal(true)}
-                className="btn btn-secondary"
-                style={{ fontSize: '0.825rem', padding: '0.5rem 0.95rem' }}
-              >
-                <Settings size={14} />
-                Configure Form
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowRecreateModal(true)}
+                onClick={() => setShowQuestionsModal(true)}
                 className="btn btn-primary"
-                style={{ fontSize: '0.825rem', padding: '0.5rem 1rem' }}
+                style={{ fontSize: '0.85rem', padding: '0.5rem 1.15rem', gap: '0.45rem' }}
               >
-                <PlusCircle size={14} />
-                New Cycle
+                <SlidersHorizontal size={14} />
+                Form Questions ({activeQuestionsCount})
               </button>
             </div>
           </div>
@@ -263,7 +240,6 @@ export default function ApplicationsAdmin() {
 
       {/* Filters Bar */}
       <div style={{ display: 'flex', gap: '0.85rem', flexWrap: 'wrap', marginBottom: '1.5rem', alignItems: 'center' }}>
-        {/* Search */}
         <div style={{ position: 'relative', width: '280px' }}>
           <Search size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
           <input
@@ -318,29 +294,6 @@ export default function ApplicationsAdmin() {
           <option value="Drone Technology">Drone Technology</option>
           <option value="None / Pure Management">Management Only</option>
         </select>
-
-        {/* Cycle filter dropdown if multiple cycles exist */}
-        {uniqueCycles.length > 1 && (
-          <select
-            value={cycleFilter}
-            onChange={(e) => setCycleFilter(e.target.value)}
-            style={{
-              padding: '0.5rem 0.85rem',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--color-border)',
-              background: 'var(--color-bg-surface)',
-              fontSize: '0.85rem',
-              color: 'var(--color-text-primary)'
-            }}
-          >
-            <option value="all">All Cycles</option>
-            {uniqueCycles.map(c => (
-              <option key={c} value={c}>
-                {c === cycleConfig?.id ? `Current (${c})` : `Archived (${c})`}
-              </option>
-            ))}
-          </select>
-        )}
       </div>
 
       {/* Applications Table */}
@@ -352,316 +305,265 @@ export default function ApplicationsAdmin() {
                 <th>Applicant Name</th>
                 <th>Academic Info</th>
                 <th>Domain &amp; Role</th>
-                <th>Cycle</th>
                 <th>Status</th>
-                <th>Application Date</th>
+                <th>Date</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>Loading applications...</td>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '2rem' }}>Loading applications...</td>
                 </tr>
               ) : filteredApps.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--color-text-muted)' }}>
-                    No applicant records found for this filter.
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--color-text-muted)' }}>
+                    No applicant records found.
                   </td>
                 </tr>
               ) : (
-                filteredApps.map(app => {
-                  const appCycle = app.cycle_id || 'cycle-2026-2027';
-                  const isCurrentCycle = appCycle === cycleConfig?.id;
-
-                  return (
-                    <tr key={app.id}>
-                      <td>
-                        <strong>{app.name}</strong>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                          {app.email}
-                        </div>
-                      </td>
-                      <td>
-                        <div>{app.branch} ({app.year})</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
-                          ID: {app.student_id || app.studentId}
-                        </div>
-                      </td>
-                      <td>
-                        <span className="tag-pill" style={{ marginRight: '0.35rem' }}>{app.domain}</span>
-                        <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>{app.role}</span>
-                      </td>
-                      <td>
-                        <span 
-                          style={{ 
-                            fontSize: '0.72rem', 
-                            padding: '0.2rem 0.5rem', 
-                            borderRadius: '4px',
-                            background: isCurrentCycle ? 'rgba(2, 132, 199, 0.08)' : 'var(--color-bg-elevated)',
-                            color: isCurrentCycle ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                            fontWeight: 600
-                          }}
+                filteredApps.map(app => (
+                  <tr key={app.id}>
+                    <td>
+                      <strong>{app.name}</strong>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                        {app.email}
+                      </div>
+                    </td>
+                    <td>
+                      <div>{app.branch} ({app.year})</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
+                        ID: {app.student_id || app.studentId || 'N/A'}
+                      </div>
+                    </td>
+                    <td>
+                      <span className="tag-pill" style={{ marginRight: '0.35rem' }}>{app.domain}</span>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>{app.role}</span>
+                    </td>
+                    <td>
+                      <select
+                        value={app.status}
+                        onChange={(e) => handleStatusChange(app.id, e.target.value)}
+                        style={{
+                          padding: '0.3rem 0.6rem',
+                          borderRadius: '6px',
+                          border: '1px solid var(--color-border)',
+                          background: 'var(--color-bg-surface)',
+                          fontSize: '0.8rem',
+                          color: 'var(--color-text-primary)'
+                        }}
+                      >
+                        <option value="New">New</option>
+                        <option value="Under Review">Under Review</option>
+                        <option value="Accepted">Accepted</option>
+                        <option value="Rejected">Rejected</option>
+                      </select>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
+                        {app.created_at ? new Date(app.created_at).toLocaleDateString() : 'Recent'}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.4rem' }}>
+                        <button
+                          onClick={() => setSelectedApp(app)}
+                          className="btn btn-secondary"
+                          style={{ padding: '0.3rem 0.65rem', fontSize: '0.8rem' }}
                         >
-                          {isCurrentCycle ? 'Current' : 'Archived'}
-                        </span>
-                      </td>
-                      <td>
-                        <select
-                          value={app.status}
-                          onChange={(e) => handleStatusChange(app.id, e.target.value)}
-                          style={{
-                            padding: '0.3rem 0.6rem',
-                            borderRadius: '6px',
-                            border: '1px solid var(--color-border)',
-                            background: 'var(--color-bg-surface)',
-                            fontSize: '0.8rem',
-                            color: 'var(--color-text-primary)'
-                          }}
+                          Details &rarr;
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(app)}
+                          className="btn btn-secondary"
+                          style={{ padding: '0.3rem 0.5rem', color: '#dc2626' }}
+                          title="Delete submission"
                         >
-                          <option value="New">New</option>
-                          <option value="Under Review">Under Review</option>
-                          <option value="Accepted">Accepted</option>
-                          <option value="Rejected">Rejected</option>
-                        </select>
-                      </td>
-                      <td>
-                        <span style={{ fontSize: '0.82rem', color: 'var(--color-text-muted)' }}>
-                          {app.created_at ? new Date(app.created_at).toLocaleDateString() : 'Recent'}
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '0.4rem' }}>
-                          <button
-                            onClick={() => setSelectedApp(app)}
-                            className="btn btn-secondary"
-                            style={{ padding: '0.3rem 0.65rem', fontSize: '0.8rem' }}
-                          >
-                            Details &rarr;
-                          </button>
-                          <button
-                            onClick={() => setDeleteTarget(app)}
-                            className="btn btn-secondary"
-                            style={{ padding: '0.3rem 0.5rem', color: '#dc2626' }}
-                            title="Delete submission"
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* CONFIGURE FORM MODAL */}
-      {showConfigModal && (
-        <div className="lightbox-backdrop" onClick={() => setShowConfigModal(false)}>
+      {/* MANAGE FORM QUESTIONS MODAL */}
+      {showQuestionsModal && (
+        <div className="lightbox-backdrop" onClick={() => setShowQuestionsModal(false)}>
           <div 
             className="aesthetic-card" 
-            style={{ maxWidth: '600px', width: '90%', maxHeight: '88vh', overflowY: 'auto', padding: '2rem' }} 
-            onClick={e => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <div>
-                <h2 style={{ fontSize: '1.35rem', fontWeight: 700 }}>Configure Recruitment Form</h2>
-                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', margin: 0 }}>
-                  Customize live application titles, target batches, and candidate guidelines.
-                </p>
-              </div>
-              <button onClick={() => setShowConfigModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveConfig}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-                    Cycle Title *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={configForm.title}
-                    onChange={e => setConfigForm(prev => ({ ...prev, title: e.target.value }))}
-                    style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-base)' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-                    Form Subtitle
-                  </label>
-                  <input
-                    type="text"
-                    value={configForm.subtitle}
-                    onChange={e => setConfigForm(prev => ({ ...prev, subtitle: e.target.value }))}
-                    style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-base)' }}
-                  />
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-                      Target Academic Years
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 1st & 2nd Year"
-                      value={configForm.target_years}
-                      onChange={e => setConfigForm(prev => ({ ...prev, target_years: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-base)' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-                      Application Deadline
-                    </label>
-                    <input
-                      type="date"
-                      value={configForm.deadline}
-                      onChange={e => setConfigForm(prev => ({ ...prev, deadline: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-base)' }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-                    Candidate Form Instructions
-                  </label>
-                  <textarea
-                    rows="3"
-                    value={configForm.instructions}
-                    onChange={e => setConfigForm(prev => ({ ...prev, instructions: e.target.value }))}
-                    style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-base)', fontFamily: 'inherit' }}
-                  ></textarea>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-                    Closed Message (shown when recruitment is inactive)
-                  </label>
-                  <textarea
-                    rows="3"
-                    value={configForm.closed_message}
-                    onChange={e => setConfigForm(prev => ({ ...prev, closed_message: e.target.value }))}
-                    style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-base)', fontFamily: 'inherit' }}
-                  ></textarea>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                <button type="button" onClick={() => setShowConfigModal(false)} className="btn btn-secondary">
-                  Cancel
-                </button>
-                <button type="submit" disabled={cycleLoading} className="btn btn-primary">
-                  {cycleLoading ? 'Saving...' : 'Save Configuration'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* RECREATE / START NEW CYCLE MODAL */}
-      {showRecreateModal && (
-        <div className="lightbox-backdrop" onClick={() => setShowRecreateModal(false)}>
-          <div 
-            className="aesthetic-card" 
-            style={{ maxWidth: '620px', width: '90%', maxHeight: '88vh', overflowY: 'auto', padding: '2rem' }} 
+            style={{ maxWidth: '640px', width: '92%', maxHeight: '88vh', overflowY: 'auto', padding: '2rem' }} 
             onClick={e => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <div>
-                <h2 style={{ fontSize: '1.35rem', fontWeight: 700 }}>Recreate / Launch New Recruitment Cycle</h2>
-                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', margin: 0 }}>
-                  Start a fresh recruitment drive. Previous applicants remain preserved and students can apply to this new drive.
+                <h2 style={{ fontSize: '1.35rem', fontWeight: 700, margin: 0 }}>Manage Form Questions</h2>
+                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: '0.25rem' }}>
+                  Add custom questions or remove extra questions from the student joining application.
                 </p>
               </div>
-              <button onClick={() => setShowRecreateModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+              <button onClick={() => setShowQuestionsModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
             </div>
 
-            <div style={{ padding: '0.85rem', background: 'rgba(2, 132, 199, 0.08)', borderRadius: '8px', border: '1px solid rgba(2, 132, 199, 0.2)', marginBottom: '1.25rem', fontSize: '0.85rem', color: 'var(--color-primary)' }}>
-              <strong>Note:</strong> Recreating a recruitment cycle creates a new cycle identifier (e.g. for a new semester or recruitment drive). Students who applied previously can submit an application for this new cycle!
+            {/* Active Questions List */}
+            <div style={{ marginBottom: '2rem' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--color-text-muted)', marginBottom: '0.75rem' }}>
+                Current Application Questions ({questions.length})
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                {questions.map((q, idx) => (
+                  <div 
+                    key={q.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '0.75rem 1rem',
+                      background: q.active === false ? 'var(--color-bg-base)' : 'var(--color-bg-elevated)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '8px',
+                      opacity: q.active === false ? 0.6 : 1
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--color-text-muted)', width: '20px' }}>
+                        {idx + 1}.
+                      </span>
+                      <div>
+                        <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                          {q.label}
+                          {q.required && <span style={{ color: '#dc2626', marginLeft: '3px' }}>*</span>}
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--color-text-muted)', marginTop: '0.15rem' }}>
+                          <span style={{ textTransform: 'capitalize' }}>Type: {q.type}</span>
+                          <span>&bull;</span>
+                          <span>{q.required ? 'Required' : 'Optional'}</span>
+                          {q.options && q.options.length > 0 && (
+                            <>
+                              <span>&bull;</span>
+                              <span>{q.options.length} options</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Question Actions */}
+                    <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                      {/* Toggle visibility */}
+                      <button
+                        type="button"
+                        onClick={() => handleToggleQuestion(q.id)}
+                        className="btn btn-secondary"
+                        style={{ padding: '0.3rem 0.55rem', fontSize: '0.75rem' }}
+                        title={q.active === false ? 'Enable question' : 'Disable question'}
+                      >
+                        {q.active === false ? <EyeOff size={13} color="#94a3b8" /> : <Eye size={13} color="var(--color-primary)" />}
+                      </button>
+
+                      {/* Remove question */}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveQuestion(q.id)}
+                        className="btn btn-secondary"
+                        style={{ padding: '0.3rem 0.55rem', color: '#dc2626' }}
+                        title="Remove question from form"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            <form onSubmit={handleRecreateCycle}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+            {/* ADD NEW QUESTION SECTION */}
+            <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: '1.5rem' }}>
+              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: '0.75rem' }}>
+                + Add a Question to Application
+              </div>
+
+              <form onSubmit={handleAddQuestion} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-                    New Cycle Title *
+                  <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+                    Question Label / Title *
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Spring 2027 Recruitment Drive"
-                    value={recreateForm.title}
-                    onChange={e => setRecreateForm(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="e.g. WhatsApp Phone Number, Prior Drone Experience, Resume Link"
+                    value={newQuestion.label}
+                    onChange={e => setNewQuestion(prev => ({ ...prev, label: e.target.value }))}
                     style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-base)' }}
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.85rem' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-                      Target Batches
+                    <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+                      Field Type
+                    </label>
+                    <select
+                      value={newQuestion.type}
+                      onChange={e => setNewQuestion(prev => ({ ...prev, type: e.target.value }))}
+                      style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-base)' }}
+                    >
+                      <option value="text">Short Text</option>
+                      <option value="textarea">Paragraph / Long Text</option>
+                      <option value="select">Dropdown Choice</option>
+                      <option value="url">Website / Portfolio URL</option>
+                      <option value="tel">Phone / Contact Number</option>
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', marginTop: '1.5rem' }}>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: 'pointer', fontWeight: 500 }}>
+                      <input
+                        type="checkbox"
+                        checked={newQuestion.required}
+                        onChange={e => setNewQuestion(prev => ({ ...prev, required: e.target.checked }))}
+                        style={{ width: '16px', height: '16px' }}
+                      />
+                      Required Question
+                    </label>
+                  </div>
+                </div>
+
+                {newQuestion.type === 'select' && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.825rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+                      Dropdown Options (comma separated) *
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. 1st & 2nd Year"
-                      value={recreateForm.target_years}
-                      onChange={e => setRecreateForm(prev => ({ ...prev, target_years: e.target.value }))}
+                      required
+                      placeholder="e.g. Beginner, Intermediate, Advanced"
+                      value={newQuestion.optionsStr}
+                      onChange={e => setNewQuestion(prev => ({ ...prev, optionsStr: e.target.value }))}
                       style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-base)' }}
                     />
                   </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-                      New Application Deadline
-                    </label>
-                    <input
-                      type="date"
-                      value={recreateForm.deadline}
-                      onChange={e => setRecreateForm(prev => ({ ...prev, deadline: e.target.value }))}
-                      style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-base)' }}
-                    />
-                  </div>
-                </div>
+                )}
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-                    Candidate Guidelines / Notice
-                  </label>
-                  <textarea
-                    rows="3"
-                    value={recreateForm.instructions}
-                    onChange={e => setRecreateForm(prev => ({ ...prev, instructions: e.target.value }))}
-                    style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)', background: 'var(--color-bg-base)', fontFamily: 'inherit' }}
-                  ></textarea>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                  <button type="submit" className="btn btn-primary" style={{ padding: '0.6rem 1.25rem', fontSize: '0.85rem' }}>
+                    <Plus size={15} /> Add to Form
+                  </button>
                 </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
-                <button type="button" onClick={() => setShowRecreateModal(false)} className="btn btn-secondary">
-                  Cancel
-                </button>
-                <button type="submit" disabled={cycleLoading} className="btn btn-primary">
-                  {cycleLoading ? 'Launching...' : 'Launch New Recruitment Cycle'}
-                </button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Candidate Details Modal */}
+      {/* CANDIDATE DETAILS MODAL */}
       {selectedApp && (
         <div className="lightbox-backdrop" onClick={() => setSelectedApp(null)}>
           <div className="aesthetic-card" style={{ maxWidth: '620px', width: '90%', maxHeight: '85vh', overflowY: 'auto', padding: '2rem' }} onClick={e => e.stopPropagation()}>
@@ -680,37 +582,53 @@ export default function ApplicationsAdmin() {
                 <strong>Email:</strong> {selectedApp.email}
               </div>
               <div>
-                <strong>Student ID:</strong> {selectedApp.student_id || selectedApp.studentId}
+                <strong>Student ID:</strong> {selectedApp.student_id || selectedApp.studentId || 'N/A'}
               </div>
               <div>
-                <strong>Branch:</strong> {selectedApp.branch}
+                <strong>Branch:</strong> {selectedApp.branch || 'N/A'}
               </div>
               <div>
-                <strong>Year:</strong> {selectedApp.year}
-              </div>
-              <div>
-                <strong>Cycle:</strong> {selectedApp.cycle_id || 'cycle-2026-2027'}
+                <strong>Year:</strong> {selectedApp.year || 'N/A'}
               </div>
               <div>
                 <strong>Submitted:</strong> {selectedApp.created_at ? new Date(selectedApp.created_at).toLocaleString() : 'N/A'}
               </div>
             </div>
 
-            <div style={{ marginBottom: '1.25rem' }}>
-              <strong style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
-                Statement of Interest:
-              </strong>
-              <div style={{ padding: '1rem', background: 'var(--color-bg-elevated)', borderRadius: '8px', fontSize: '0.925rem', lineHeight: 1.55 }}>
-                {selectedApp.reason || 'No statement provided.'}
+            {selectedApp.reason && (
+              <div style={{ marginBottom: '1.25rem' }}>
+                <strong style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>
+                  Why do you want to join?
+                </strong>
+                <div style={{ padding: '1rem', background: 'var(--color-bg-elevated)', borderRadius: '8px', fontSize: '0.925rem', lineHeight: 1.55 }}>
+                  {selectedApp.reason}
+                </div>
               </div>
-            </div>
+            )}
 
             {selectedApp.portfolio_url && (
-              <div style={{ marginBottom: '1.5rem' }}>
-                <strong>Portfolio / Work Link:</strong>{' '}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <strong>Portfolio / Link:</strong>{' '}
                 <a href={selectedApp.portfolio_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--color-primary)', textDecoration: 'underline' }}>
                   {selectedApp.portfolio_url} <ExternalLink size={13} style={{ display: 'inline' }} />
                 </a>
+              </div>
+            )}
+
+            {/* Custom answers if candidate answered extra questions */}
+            {selectedApp.custom_answers && Object.keys(selectedApp.custom_answers).length > 0 && (
+              <div style={{ marginBottom: '1.25rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
+                <strong style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--color-primary)', textTransform: 'uppercase' }}>
+                  Additional Question Answers:
+                </strong>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {Object.entries(selectedApp.custom_answers).map(([key, val]) => (
+                    <div key={key} style={{ padding: '0.6rem 0.85rem', background: 'var(--color-bg-base)', borderRadius: '6px', fontSize: '0.85rem' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{key}: </span>
+                      <span style={{ color: 'var(--color-text-secondary)' }}>{val || 'N/A'}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
