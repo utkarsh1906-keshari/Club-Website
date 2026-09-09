@@ -375,13 +375,15 @@ export default function JoinUs() {
                   </div>
                 )}
 
-                {/* 3. Admission Number / Roll Number */}
+                {/* 3. Admission Number */}
                 {isQuestionActive('studentId') && (
                   <div className="form-group">
                     <label htmlFor="studentId">
                       {activeQuestions.find(q => q.id === 'studentId')?.label
-                        ?.replace('Student ID / Roll Number', 'Admission Number / Roll Number')
-                        ?.replace('Admission No. / Roll Number', 'Admission Number / Roll Number') || 'Admission Number / Roll Number'}
+                        ?.replace('Student ID / Roll Number', 'Admission Number')
+                        ?.replace('Admission Number / Roll Number', 'Admission Number')
+                        ?.replace('Admission No. / Roll Number', 'Admission Number')
+                        ?.replace('Student ID', 'Admission Number') || 'Admission Number'}
                       {activeQuestions.find(q => q.id === 'studentId')?.required && ' *'}
                     </label>
                     <input
@@ -389,7 +391,7 @@ export default function JoinUs() {
                       id="studentId"
                       name="studentId"
                       required={activeQuestions.find(q => q.id === 'studentId')?.required}
-                      placeholder="e.g. 2024B0101001 or Roll Number"
+                      placeholder="e.g. 2024B0101001"
                       value={formData.studentId}
                       onChange={handleChange}
                     />
