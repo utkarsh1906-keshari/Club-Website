@@ -11,6 +11,7 @@ import {
   Save 
 } from 'lucide-react';
 import { domainsService } from '../lib/dataService';
+import ImageUpload from '../components/ImageUpload';
 
 const DOMAIN_ICONS = {
   'ai-ml': <Brain size={22} />,
@@ -145,6 +146,24 @@ export default function DomainsAdmin() {
                 </button>
               </div>
 
+              {dom.image_url && (
+                <div style={{
+                  width: '100%',
+                  height: '110px',
+                  borderRadius: '8px',
+                  overflow: 'hidden',
+                  marginBottom: '1rem',
+                  border: '1px solid var(--color-border)'
+                }}>
+                  <img
+                    src={dom.image_url}
+                    alt={dom.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                </div>
+              )}
+
               <p style={{ fontSize: '0.9rem', color: 'var(--color-text-secondary)', marginBottom: '1.25rem', lineHeight: 1.55 }}>
                 {dom.description || dom.desc}
               </p>
@@ -267,6 +286,19 @@ export default function DomainsAdmin() {
                   style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
                 />
               </div>
+
+              <ImageUpload
+                label="Domain Banner / Cover Photo"
+                value={formData.image_url}
+                onChange={(url) => setFormData(prev => ({ ...prev, image_url: url }))}
+                fallbackImage="/abes/bottom-banner.webp"
+                presets={[
+                  { label: 'AI/ML Vision', url: '/abes/proteus-simulink.webp' },
+                  { label: 'VLSI Circuits', url: '/abes/circuit-bid.webp' },
+                  { label: 'Robotics & IoT', url: '/abes/bottom-banner.webp' },
+                  { label: 'Drone Technology', url: '/abes/bootcamp.webp' }
+                ]}
+              />
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
                 <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary">

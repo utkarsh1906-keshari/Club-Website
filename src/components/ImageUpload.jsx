@@ -1,11 +1,13 @@
 import React, { useRef, useState } from 'react';
-import { UploadCloud, Image as ImageIcon, X, Check, RefreshCw } from 'lucide-react';
+import { UploadCloud, Link as LinkIcon, X, Check, RefreshCw, Image as ImageIcon } from 'lucide-react';
+import { normalizeImageUrl } from '../lib/dataService';
 
 /**
  * ImageUpload Component
- * Replaces URL text inputs with a pure image upload experience.
- * Automatically compresses images client-side via HTML5 Canvas to keep
- * file sizes small (~30KB-70KB) and prevent LocalStorage quota overflow.
+ * Allows admin to upload images directly from device (drag & drop or browse),
+ * or optionally paste an image link/URL with instant preview.
+ * Automatically compresses device uploads client-side via HTML5 Canvas to keep
+ * file sizes lightweight (~30KB-70KB) and prevent LocalStorage quota overflow.
  */
 export default function ImageUpload({
   label = 'Upload Image',
@@ -19,10 +21,12 @@ export default function ImageUpload({
   const [isCompressing, setIsCompressing] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [inputUrl, setInputUrl] = useState('');
 
   const processFile = (file) => {
     if (!file || !file.type.startsWith('image/')) {
-      alert('Please upload a valid image file (PNG, JPG, WebP, etc.).');
+      alert('Please select a valid image file (PNG, JPG, WebP, etc.).');
       return;
     }
 
@@ -59,10 +63,12 @@ export default function ImageUpload({
           }
 
           onChange(dataUrl);
+          setShowUrlInput(false);
         } catch (err) {
           console.error('Image compression error:', err);
           // Fallback to raw data url if canvas fails
           onChange(e.target.result);
+          setShowUrlInput(false);
         } finally {
           setIsCompressing(false);
         }
@@ -108,7 +114,16 @@ export default function ImageUpload({
   const handleRemove = (e) => {
     e.stopPropagation();
     onChange('');
+    setInputUrl('');
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleApplyUrl = (e) => {
+    e?.preventDefault();
+    if (!inputUrl.trim()) return;
+    const clean = normalizeImageUrl(inputUrl.trim());
+    onChange(clean);
+    setShowUrlInput(false);
   };
 
   const displayImage = value || fallbackImage;
@@ -117,17 +132,43 @@ export default function ImageUpload({
     <div style={{ marginBottom: '1.25rem' }}>
       {label && (
         <label style={{ 
-          display: 'block', 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          alignItems: 'center',
           fontSize: '0.85rem', 
           fontWeight: 600, 
           marginBottom: '0.4rem',
           color: 'var(--color-text-primary)'
         }}>
-          {label} *
+          <span>{label} *</span>
+          <button
+            type="button"
+            onClick={() => {
+              setShowUrlInput(!showUrlInput);
+              if (!showUrlInput && value && !value.startsWith('data:')) {
+                setInputUrl(value);
+              }
+            }}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--color-text-muted)',
+              fontSize: '0.76rem',
+              cursor: 'pointer',
+              padding: 0,
+              textDecoration: 'underline',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.25rem'
+            }}
+          >
+            <LinkIcon size={12} />
+            {showUrlInput ? 'Switch to file upload' : 'Or enter image web link'}
+          </button>
         </label>
       )}
 
-      {/* Hidden native file input */}
+      {/* Hidden native file input for device picker */}
       <input
         type="file"
         ref={fileInputRef}
@@ -135,6 +176,47 @@ export default function ImageUpload({
         onChange={handleFileChange}
         style={{ display: 'none' }}
       />
+
+      {/* Optional URL Paste Form */}
+      {showUrlInput && (
+        <div style={{
+          display: 'flex',
+          gap: '0.5rem',
+          marginBottom: '0.75rem',
+          padding: '0.65rem',
+          background: 'var(--color-bg-base)',
+          borderRadius: '8px',
+          border: '1px solid var(--color-border)'
+        }}>
+          <input
+            type="text"
+            value={inputUrl}
+            placeholder="Paste image URL (https://... or Google Drive link)"
+            onChange={(e) => setInputUrl(e.target.value)}
+            style={{
+              flex: 1,
+              padding: '0.5rem 0.75rem',
+              borderRadius: '6px',
+              border: '1px solid var(--color-border)',
+              fontSize: '0.85rem'
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleApplyUrl();
+              }
+            }}
+          />
+          <button
+            type="button"
+            onClick={handleApplyUrl}
+            className="btn btn-primary"
+            style={{ padding: '0.5rem 1rem', fontSize: '0.82rem' }}
+          >
+            Apply
+          </button>
+        </div>
+      )}
 
       {/* Upload & Preview Box */}
       <div
@@ -179,10 +261,10 @@ export default function ImageUpload({
 
             <div style={{ textAlign: 'left', flex: 1, minWidth: '180px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#10b981', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.25rem' }}>
-                <Check size={16} /> Photo Uploaded Successfully
+                <Check size={16} /> Photo Ready &amp; Verified
               </div>
               <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                Click anywhere or drag a new image to replace.
+                Click anywhere to upload a new photo from your device.
               </p>
             </div>
 
@@ -230,7 +312,7 @@ export default function ImageUpload({
                 {isCompressing ? 'Compressing & Preparing Photo...' : 'Click to Upload Photo from Device'}
               </p>
               <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                Drag and drop your image here (PNG, JPG, WebP supported)
+                Drag and drop your image file here (PNG, JPG, WebP supported)
               </p>
             </div>
           </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Edit, 
@@ -43,52 +43,6 @@ export default function EventsAdmin() {
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState(null);
-
-  // Image upload & preview state
-  const fileInputRef = useRef(null);
-  const [imageError, setImageError] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-
-  const handleImageFileUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploading(true);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        // Resize on canvas to max 900px to ensure it fits safely in localStorage
-        const canvas = document.createElement('canvas');
-        let { width, height } = img;
-        const maxDim = 900;
-        if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          } else {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
-          }
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        const compressedDataUrl = canvas.toDataURL('image/webp', 0.82) || canvas.toDataURL('image/jpeg', 0.82);
-        setFormData(prev => ({ ...prev, image_url: compressedDataUrl }));
-        setImageError(false);
-        setIsUploading(false);
-      };
-      img.onerror = () => {
-        alert('Could not process this image file. Please try another image.');
-        setIsUploading(false);
-      };
-      img.src = event.target.result;
-    };
-    reader.readAsDataURL(file);
-  };
 
   const handleResetDefaults = async () => {
     if (window.confirm('Are you sure you want to restore official club events and posters? This will fix any broken or corrupted event data.')) {

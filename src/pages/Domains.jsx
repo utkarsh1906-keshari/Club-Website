@@ -112,6 +112,25 @@ export default function Domains() {
         <div className="container">
           <div className="aesthetic-card domain-detail-card" key={activeDomain.id}>
             
+            {activeDomain.image_url && (
+              <div style={{
+                width: '100%',
+                height: '220px',
+                borderRadius: '12px',
+                overflow: 'hidden',
+                marginBottom: '1.5rem',
+                border: '1px solid var(--color-border)',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.06)'
+              }}>
+                <img
+                  src={activeDomain.image_url}
+                  alt={activeDomain.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => { e.currentTarget.parentElement.style.display = 'none'; }}
+                />
+              </div>
+            )}
+
             {/* Domain Title & Lead Header */}
             <div className="domain-detail-header">
               <div className="domain-detail-title-group">
