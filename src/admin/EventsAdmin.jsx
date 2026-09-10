@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, 
   Edit, 
@@ -6,9 +6,11 @@ import {
   Users, 
   X, 
   AlertTriangle,
-  Search
+  Search,
+  Upload,
+  RotateCcw
 } from 'lucide-react';
-import { eventsService, eventRegistrationsService } from '../lib/dataService';
+import { eventsService, eventRegistrationsService, normalizeImageUrl } from '../lib/dataService';
 
 export default function EventsAdmin() {
   const [events, setEvents] = useState([]);
@@ -40,6 +42,67 @@ export default function EventsAdmin() {
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState(null);
+
+  // Image upload & preview state
+  const fileInputRef = useRef(null);
+  const [imageError, setImageError] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleImageFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        // Resize on canvas to max 900px to ensure it fits safely in localStorage
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        const maxDim = 900;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedDataUrl = canvas.toDataURL('image/webp', 0.82) || canvas.toDataURL('image/jpeg', 0.82);
+        setFormData(prev => ({ ...prev, image_url: compressedDataUrl }));
+        setImageError(false);
+        setIsUploading(false);
+      };
+      img.onerror = () => {
+        alert('Could not process this image file. Please try another image.');
+        setIsUploading(false);
+      };
+      img.src = event.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleResetDefaults = async () => {
+    if (window.confirm('Are you sure you want to restore official club events and posters? This will fix any broken or corrupted event data.')) {
+      setLoading(true);
+      try {
+        await eventsService.resetToDefault();
+        await loadEvents();
+        alert('Official club events and verified posters restored successfully!');
+      } catch (err) {
+        console.error('Failed to reset default events:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
 
   const loadEvents = async () => {
     setLoading(true);
@@ -101,8 +164,11 @@ export default function EventsAdmin() {
       ? formData.highlights.split(',').map(h => h.trim()).filter(Boolean)
       : [];
 
+    const cleanImageUrl = normalizeImageUrl(formData.image_url);
+
     const payload = {
       ...formData,
+      image_url: cleanImageUrl,
       highlights: highlightsArr
     };
 
@@ -163,9 +229,20 @@ export default function EventsAdmin() {
             Create, schedule, update and monitor participant registrations for club bootcamps and competitions.
           </p>
         </div>
-        <button onClick={handleOpenCreate} className="btn btn-primary" style={{ gap: '0.4rem' }}>
-          <Plus size={16} /> Add New Event
-        </button>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button 
+            type="button" 
+            onClick={handleResetDefaults} 
+            className="btn btn-secondary" 
+            style={{ gap: '0.4rem', fontSize: '0.88rem' }}
+            title="Restore official seed events if event data was corrupted"
+          >
+            <RotateCcw size={15} /> Restore Default Events
+          </button>
+          <button onClick={handleOpenCreate} className="btn btn-primary" style={{ gap: '0.4rem' }}>
+            <Plus size={16} /> Add New Event
+          </button>
+        </div>
       </div>
 
       {/* Search Bar */}
@@ -223,6 +300,10 @@ export default function EventsAdmin() {
                           src={evt.image_url || evt.image || '/abes/bootcamp.webp'} 
                           alt="" 
                           style={{ width: '48px', height: '36px', objectFit: 'cover', borderRadius: '4px' }} 
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = '/abes/bootcamp.webp';
+                          }}
                         />
                         <div>
                           <strong>{evt.title}</strong>
@@ -379,14 +460,115 @@ export default function EventsAdmin() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Poster / Image URL</label>
-                <input
-                  type="text"
-                  value={formData.image_url}
-                  placeholder="/abes/bootcamp.webp or https://..."
-                  onChange={e => setFormData({ ...formData, image_url: e.target.value })}
-                  style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-                />
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+                  Poster / Image URL or Upload
+                </label>
+                
+                {/* Image controls: URL input + Upload File button */}
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <input
+                    type="text"
+                    value={formData.image_url}
+                    placeholder="/abes/bootcamp.webp or https://..."
+                    onChange={e => {
+                      setFormData({ ...formData, image_url: e.target.value });
+                      setImageError(false);
+                    }}
+                    onBlur={e => {
+                      if (e.target.value) {
+                        setFormData(prev => ({ ...prev, image_url: normalizeImageUrl(prev.image_url) }));
+                      }
+                    }}
+                    style={{ flex: 1, padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+                  />
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    accept="image/*" 
+                    onChange={handleImageFileUpload} 
+                    style={{ display: 'none' }} 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => fileInputRef.current?.click()} 
+                    className="btn btn-secondary" 
+                    style={{ gap: '0.4rem', whiteSpace: 'nowrap', fontSize: '0.85rem' }}
+                    disabled={isUploading}
+                  >
+                    <Upload size={14} /> {isUploading ? 'Compressing...' : 'Upload Photo'}
+                  </button>
+                </div>
+
+                {/* Preset Club Posters Quick Selection */}
+                <div style={{ marginBottom: '0.75rem' }}>
+                  <span style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '0.3rem' }}>
+                    Quick Select Verified Posters:
+                  </span>
+                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                    {[
+                      { label: 'Bootcamp', url: '/abes/bootcamp.webp' },
+                      { label: 'Circuit Bid', url: '/abes/circuit-bid.webp' },
+                      { label: 'FPV Assembly', url: '/abes/fpv-assembly.webp' },
+                      { label: 'Proteus Simulink', url: '/abes/proteus-simulink.webp' },
+                      { label: 'RobotoHack', url: '/abes/robotohack.webp' },
+                      { label: 'Lab Arena', url: '/abes/bottom-banner.webp' }
+                    ].map(p => (
+                      <button
+                        key={p.url}
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, image_url: p.url }));
+                          setImageError(false);
+                        }}
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '0.2rem 0.55rem',
+                          borderRadius: '4px',
+                          border: formData.image_url === p.url ? '1px solid #8b1d24' : '1px solid var(--color-border)',
+                          background: formData.image_url === p.url ? 'rgba(139, 29, 36, 0.12)' : 'var(--color-bg-base)',
+                          color: formData.image_url === p.url ? '#8b1d24' : 'var(--color-text-secondary)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Live Image Preview */}
+                <div style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '1rem', 
+                  padding: '0.75rem', 
+                  borderRadius: '6px', 
+                  background: 'var(--color-bg-elevated)', 
+                  border: '1px solid var(--color-border)' 
+                }}>
+                  <div style={{ width: '80px', height: '52px', borderRadius: '4px', overflow: 'hidden', background: '#000', flexShrink: 0 }}>
+                    <img 
+                      src={formData.image_url || '/abes/bootcamp.webp'} 
+                      alt="Preview" 
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = '/abes/bootcamp.webp';
+                        setImageError(true);
+                      }}
+                      onLoad={() => setImageError(false)}
+                    />
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+                    {imageError ? (
+                      <span style={{ color: '#e11d48', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                        <AlertTriangle size={13} /> URL failed to load. Fallback poster (/abes/bootcamp.webp) will be used.
+                      </span>
+                    ) : (
+                      <span>Live Poster Preview &bull; Ready to display on site</span>
+                    )}
+                  </div>
+                </div>
               </div>
 
               <div>

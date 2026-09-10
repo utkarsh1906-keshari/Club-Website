@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase } from './supabase.js';
 
 // ============================================================================
 // Default Seed Data (Real ABES Drone & Robotics Club Data)
@@ -574,7 +574,79 @@ const SEED_ANNOUNCEMENTS = [
   }
 ];
 
-// Helper to retrieve/store in LocalStorage
+// Normalization & Sanitization Helpers
+export function normalizeImageUrl(url) {
+  if (!url || typeof url !== 'string') return '/abes/bootcamp.webp';
+  let trimmed = url.trim();
+  if (!trimmed) return '/abes/bootcamp.webp';
+
+  // Google Drive preview/share link auto-conversion to direct image streaming URL
+  const gdMatch = trimmed.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) ||
+                  trimmed.match(/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/) ||
+                  trimmed.match(/drive\.google\.com\/uc\?id=([a-zA-Z0-9_-]+)/);
+  if (gdMatch && gdMatch[1]) {
+    return `https://lh3.googleusercontent.com/d/${gdMatch[1]}`;
+  }
+
+  // Dropbox link auto-conversion
+  if (trimmed.includes('dropbox.com') && trimmed.includes('dl=0')) {
+    return trimmed.replace('dl=0', 'raw=1');
+  }
+
+  // Relative path, local asset, data URI, or blob URL
+  if (trimmed.startsWith('/') || trimmed.startsWith('data:') || trimmed.startsWith('blob:')) {
+    return trimmed;
+  }
+
+  // Web URL without protocol -> prepend https://
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+    return 'https://' + trimmed;
+  }
+
+  return trimmed;
+}
+
+export function sanitizeEvent(evt) {
+  if (!evt || typeof evt !== 'object') return null;
+
+  // Normalize highlights into a safe array of strings
+  let highlights = [];
+  if (Array.isArray(evt.highlights)) {
+    highlights = evt.highlights
+      .map(h => (typeof h === 'string' ? h.trim() : String(h || '')))
+      .filter(Boolean);
+  } else if (typeof evt.highlights === 'string') {
+    highlights = evt.highlights
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+  }
+
+  const category = (evt.category && typeof evt.category === 'string' && evt.category.trim())
+    ? evt.category.trim()
+    : 'Workshop';
+
+  const imageUrl = normalizeImageUrl(evt.image_url || evt.image);
+
+  return {
+    id: String(evt.id || ('event-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6))),
+    title: evt.title || 'Untitled Event',
+    category: category,
+    event_date: evt.event_date || evt.date || 'Upcoming',
+    time: evt.time || '10:00 AM – 4:30 PM',
+    venue: evt.venue || 'Robotics Lab & Flight Cage, ABESEC',
+    description: evt.description || evt.desc || '',
+    image_url: imageUrl,
+    badge: evt.badge || category,
+    highlights: highlights,
+    is_past: !!evt.is_past,
+    registration_open: evt.registration_open !== false,
+    registration_url: evt.registration_url || '',
+    created_at: evt.created_at || new Date().toISOString()
+  };
+}
+
+// Helper to retrieve/store in LocalStorage with data integrity checks
 function getLocal(key, seed) {
   try {
     const item = localStorage.getItem('drc_' + key);
@@ -582,7 +654,14 @@ function getLocal(key, seed) {
       localStorage.setItem('drc_' + key, JSON.stringify(seed));
       return seed;
     }
-    return JSON.parse(item);
+    const parsed = JSON.parse(item);
+    // Ensure array seed keys never return null, object, or primitives
+    if (Array.isArray(seed) && !Array.isArray(parsed)) {
+      console.warn(`Expected array for ${key} in localStorage, reset to seed:`, parsed);
+      localStorage.setItem('drc_' + key, JSON.stringify(seed));
+      return seed;
+    }
+    return parsed || seed;
   } catch (e) {
     console.warn(`Local storage read error for ${key}:`, e);
     return seed;
@@ -724,61 +803,88 @@ export const projectsService = {
 
 export const eventsService = {
   async getAll() {
+    let list = [];
     if (supabase) {
       try {
         const { data, error } = await supabase.from('events').select('*').order('created_at', { ascending: false });
-        if (!error && data && data.length > 0) return data;
+        if (!error && Array.isArray(data) && data.length > 0) {
+          list = data;
+        }
       } catch (err) {
         console.warn('Supabase events fetch failed, using local cache:', err);
       }
     }
-    return getLocal('events', SEED_EVENTS);
+    if (!list || list.length === 0) {
+      list = getLocal('events', SEED_EVENTS);
+    }
+    if (!Array.isArray(list) || list.length === 0) {
+      list = SEED_EVENTS;
+      setLocal('events', SEED_EVENTS);
+    }
+    // Clean and sanitize all events, heal stored cache so corrupted items never break the UI
+    const sanitized = list.map(sanitizeEvent).filter(Boolean);
+    const result = sanitized.length > 0 ? sanitized : SEED_EVENTS.map(sanitizeEvent);
+    // Self-heal localStorage with sanitized data
+    setLocal('events', result);
+    return result;
+  },
+
+  async resetToDefault() {
+    const seed = SEED_EVENTS.map(sanitizeEvent);
+    setLocal('events', seed);
+    return seed;
   },
 
   async create(event) {
+    const clean = sanitizeEvent(event);
     const newEvent = {
-      id: 'event-' + Date.now(),
-      created_at: new Date().toISOString(),
-      ...event
+      ...clean,
+      id: clean.id.startsWith('event-') ? clean.id : 'event-' + Date.now(),
+      created_at: new Date().toISOString()
     };
     if (supabase) {
       try {
-        const { data, error } = await supabase.from('events').insert([event]).select().single();
+        const { data, error } = await supabase.from('events').insert([newEvent]).select().single();
         if (!error && data) {
-          const list = [data, ...getLocal('events', SEED_EVENTS)];
+          const current = await this.getAll();
+          const list = [sanitizeEvent(data), ...current.filter(e => e.id !== data.id)];
           setLocal('events', list);
-          return data;
+          return sanitizeEvent(data);
         }
       } catch (err) {
         console.warn('Supabase event create error:', err);
       }
     }
-    const list = [newEvent, ...getLocal('events', SEED_EVENTS)];
+    const current = await this.getAll();
+    const list = [newEvent, ...current.filter(e => e.id !== newEvent.id)];
     setLocal('events', list);
     return newEvent;
   },
 
   async update(id, eventData) {
+    const clean = sanitizeEvent({ ...eventData, id });
     if (supabase) {
       try {
         const { data, error } = await supabase
           .from('events')
-          .update(eventData)
+          .update(clean)
           .eq('id', id)
           .select()
           .single();
         if (!error && data) {
-          const list = getLocal('events', SEED_EVENTS).map(e => (e.id === id ? { ...e, ...data } : e));
+          const current = await this.getAll();
+          const list = current.map(e => (e.id === id ? sanitizeEvent(data) : e));
           setLocal('events', list);
-          return data;
+          return sanitizeEvent(data);
         }
       } catch (err) {
-        console.warn('Supabase event update error:', err);
+        console.warn('Supabase event update error, falling back to local:', err);
       }
     }
-    const list = getLocal('events', SEED_EVENTS).map(e => (e.id === id ? { ...e, ...eventData } : e));
+    const current = await this.getAll();
+    const list = current.map(e => (e.id === id ? { ...e, ...clean } : e));
     setLocal('events', list);
-    return list.find(e => e.id === id);
+    return list.find(e => e.id === id) || clean;
   },
 
   async delete(id) {
@@ -789,7 +895,8 @@ export const eventsService = {
         console.warn('Supabase event delete error:', err);
       }
     }
-    const list = getLocal('events', SEED_EVENTS).filter(e => e.id !== id);
+    const current = await this.getAll();
+    const list = current.filter(e => e.id !== id);
     setLocal('events', list);
     return true;
   }

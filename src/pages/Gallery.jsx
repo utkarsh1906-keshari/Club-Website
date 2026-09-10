@@ -93,7 +93,15 @@ export default function Gallery() {
                 }}
               >
                 <div className="gallery-image-container">
-                  <img src={item.image_url || item.image} alt={item.title} className="gallery-card-img" />
+                  <img 
+                    src={item.image_url || item.image || '/abes/bootcamp.webp'} 
+                    alt={item.title} 
+                    className="gallery-card-img" 
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = '/abes/bootcamp.webp';
+                    }}
+                  />
                   <span className="gallery-badge-tag">{item.badge}</span>
                   
                   <div className="gallery-hover-overlay">
@@ -132,7 +140,15 @@ export default function Gallery() {
             </button>
             
             <div className="lightbox-image-wrapper">
-              <img src={selectedImage.image_url || selectedImage.image} alt={selectedImage.title} className="lightbox-full-img" />
+              <img 
+                src={selectedImage.image_url || selectedImage.image || '/abes/bootcamp.webp'} 
+                alt={selectedImage.title} 
+                className="lightbox-full-img" 
+                onError={(e) => {
+                  e.currentTarget.onerror = null;
+                  e.currentTarget.src = '/abes/bootcamp.webp';
+                }}
+              />
             </div>
 
             <div className="lightbox-details">

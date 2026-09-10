@@ -29,43 +29,46 @@ import ApplicationsAdmin from './admin/ApplicationsAdmin';
 import AnnouncementsAdmin from './admin/AnnouncementsAdmin';
 import UsersAdmin from './admin/UsersAdmin';
 import SettingsAdmin from './admin/SettingsAdmin';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
   return (
     <Router>
       <div className="app-container">
-        <Routes>
-          {/* Public Routes */}
-          <Route path="/" element={<PublicLayout />}>
-            <Route index element={<Home />} />
-            <Route path="about" element={<About />} />
-            <Route path="domains" element={<Domains />} />
-            <Route path="projects" element={<Projects />} />
-            <Route path="events" element={<Events />} />
-            <Route path="team" element={<Team />} />
-            <Route path="gallery" element={<Gallery />} />
-            <Route path="achievements" element={<Achievements />} />
-            <Route path="join" element={<JoinUs />} />
-            <Route path="contact" element={<Contact />} />
-          </Route>
+        <ErrorBoundary>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={<PublicLayout />}>
+              <Route index element={<Home />} />
+              <Route path="about" element={<About />} />
+              <Route path="domains" element={<Domains />} />
+              <Route path="projects" element={<Projects />} />
+              <Route path="events" element={<Events />} />
+              <Route path="team" element={<Team />} />
+              <Route path="gallery" element={<Gallery />} />
+              <Route path="achievements" element={<Achievements />} />
+              <Route path="join" element={<JoinUs />} />
+              <Route path="contact" element={<Contact />} />
+            </Route>
 
-          {/* Admin Routes */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="events" element={<EventsAdmin />} />
-            <Route path="projects" element={<ProjectsAdmin />} />
-            <Route path="team" element={<TeamAdmin />} />
-            <Route path="domains" element={<DomainsAdmin />} />
-            <Route path="gallery" element={<GalleryAdmin />} />
-            <Route path="applications" element={<ApplicationsAdmin />} />
-            <Route path="announcements" element={<AnnouncementsAdmin />} />
-            <Route path="users" element={<UsersAdmin />} />
-            <Route path="settings" element={<SettingsAdmin />} />
-          </Route>
+            {/* Admin Routes */}
+            <Route path="/admin" element={<AdminLayout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="events" element={<EventsAdmin />} />
+              <Route path="projects" element={<ProjectsAdmin />} />
+              <Route path="team" element={<TeamAdmin />} />
+              <Route path="domains" element={<DomainsAdmin />} />
+              <Route path="gallery" element={<GalleryAdmin />} />
+              <Route path="applications" element={<ApplicationsAdmin />} />
+              <Route path="announcements" element={<AnnouncementsAdmin />} />
+              <Route path="users" element={<UsersAdmin />} />
+              <Route path="settings" element={<SettingsAdmin />} />
+            </Route>
 
-          {/* Catch-all fallback for any unknown URL -> clean redirect to Home */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            {/* Catch-all fallback for any unknown URL -> clean redirect to Home */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </ErrorBoundary>
       </div>
     </Router>
   );

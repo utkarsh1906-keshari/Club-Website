@@ -183,6 +183,10 @@ export default function Projects() {
                       src={proj.image_url || '/abes/bottom-banner.webp'} 
                       alt={proj.title}
                       className="project-thumb-img"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = '/abes/bottom-banner.webp';
+                      }}
                     />
                     <div className="project-badge-overlay">
                       <span className="domain-tag-badge">

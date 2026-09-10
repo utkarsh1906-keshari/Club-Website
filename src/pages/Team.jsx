@@ -59,7 +59,15 @@ export default function Team() {
             {executiveTeam.map((c, i) => (
               <div key={c.id || i} className="aesthetic-card coordinator-card">
                 <div className="coordinator-avatar-box">
-                  <img src={c.image_url || c.image || '/club-emblem.png'} alt={c.name} className="coordinator-photo" />
+                  <img 
+                    src={c.image_url || c.image || '/club-emblem.png'} 
+                    alt={c.name} 
+                    className="coordinator-photo" 
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = '/club-emblem.png';
+                    }}
+                  />
                   <span className="coordinator-badge">{c.badge || c.role}</span>
                 </div>
                 <div className="coordinator-info">
@@ -149,9 +157,13 @@ export default function Team() {
                     {m.image_url && (
                       <div style={{ marginBottom: '0.75rem', textAlign: 'center' }}>
                         <img
-                          src={m.image_url}
+                          src={m.image_url || '/club-emblem.png'}
                           alt={m.name}
                           style={{ width: '64px', height: '64px', borderRadius: '50%', objectFit: 'cover', border: '2px solid rgba(123, 24, 30, 0.2)' }}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = '/club-emblem.png';
+                          }}
                         />
                       </div>
                     )}

@@ -85,6 +85,7 @@ export default function Events() {
     setSelectedEvent(evt);
     setIsSubmitted(false);
     setIsSubmitting(false);
+    const cat = (evt?.category || '').toLowerCase();
     setFormData({
       fullName: '',
       email: '',
@@ -92,7 +93,7 @@ export default function Events() {
       rollNo: '',
       branch: 'Computer Science & Engineering',
       year: '1st Year',
-      participationType: evt.category.toLowerCase().includes('hackathon') ? 'Team' : 'Solo',
+      participationType: cat.includes('hackathon') ? 'Team' : 'Solo',
       teamName: '',
       teamSize: '2',
       teamMembers: '',
@@ -141,9 +142,10 @@ export default function Events() {
     }
   };
 
+  const safeEvents = Array.isArray(events) ? events : [];
   const filteredEvents = activeTab === 'all' 
-    ? events 
-    : events.filter(e => e.category.toLowerCase().includes(activeTab.toLowerCase()));
+    ? safeEvents 
+    : safeEvents.filter(e => (e?.category || '').toLowerCase().includes(activeTab.toLowerCase()));
 
   return (
     <div className="events-page">
@@ -174,47 +176,77 @@ export default function Events() {
       {/* Events Grid */}
       <section className="section-padding">
         <div className="container">
-          <div className="events-official-grid">
-            {filteredEvents.map((evt) => (
-              <div key={evt.id} className="aesthetic-card event-official-card">
-                <div className="event-poster-container">
-                  <img src={evt.image_url || evt.image} alt={evt.title} className="event-poster-image" />
-                  <span className="event-badge-tag">{evt.badge}</span>
-                </div>
+          {filteredEvents.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--color-text-secondary)' }}>
+              <p style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>No events found in this category.</p>
+              <button 
+                type="button" 
+                className="btn btn-secondary btn-sm"
+                onClick={() => setActiveTab('all')}
+              >
+                View All Events
+              </button>
+            </div>
+          ) : (
+            <div className="events-official-grid">
+              {filteredEvents.map((evt) => {
+                const highlights = Array.isArray(evt.highlights)
+                  ? evt.highlights
+                  : typeof evt.highlights === 'string'
+                    ? evt.highlights.split(',').map(s => s.trim()).filter(Boolean)
+                    : [];
 
-                <div className="event-card-content">
-                  <div className="event-meta-header">
-                    <span className="event-date-text">
-                      <Calendar size={14} /> {evt.event_date || evt.date}
-                    </span>
-                    <span className="event-venue-text">
-                      <MapPin size={14} /> {evt.venue}
-                    </span>
+                return (
+                  <div key={evt.id} className="aesthetic-card event-official-card">
+                    <div className="event-poster-container">
+                      <img 
+                        src={evt.image_url || evt.image || '/abes/bootcamp.webp'} 
+                        alt={evt.title || 'Event poster'} 
+                        className="event-poster-image"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = '/abes/bootcamp.webp';
+                        }}
+                      />
+                      <span className="event-badge-tag">{evt.badge || evt.category || 'Event'}</span>
+                    </div>
+
+                    <div className="event-card-content">
+                      <div className="event-meta-header">
+                        <span className="event-date-text">
+                          <Calendar size={14} /> {evt.event_date || evt.date || 'Upcoming'}
+                        </span>
+                        <span className="event-venue-text">
+                          <MapPin size={14} /> {evt.venue || 'Robotics Lab & Flight Cage, ABESEC'}
+                        </span>
+                      </div>
+
+                      <h3 className="event-heading">{evt.title || 'Untitled Event'}</h3>
+                      <p className="event-description">{evt.description || evt.desc || 'No description provided.'}</p>
+
+                      <div className="event-chips-wrapper">
+                        {highlights.map((h, idx) => (
+                          <span key={idx} className="event-highlight-chip">{h}</span>
+                        ))}
+                      </div>
+
+                      <div className="event-card-footer">
+                        <button 
+                          type="button" 
+                          className="btn btn-primary btn-sm event-register-trigger"
+                          onClick={() => handleOpenRegister(evt)}
+                        >
+                          <span>Register for Event</span>
+                          <ArrowRight size={14} />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-
-                  <h3 className="event-heading">{evt.title}</h3>
-                  <p className="event-description">{evt.description || evt.desc}</p>
-
-                  <div className="event-chips-wrapper">
-                    {(evt.highlights || []).map((h, idx) => (
-                      <span key={idx} className="event-highlight-chip">{h}</span>
-                    ))}
-                  </div>
-
-                  <div className="event-card-footer">
-                    <button 
-                      type="button" 
-                      className="btn btn-primary btn-sm event-register-trigger"
-                      onClick={() => handleOpenRegister(evt)}
-                    >
-                      <span>Register for Event</span>
-                      <ArrowRight size={14} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
@@ -228,12 +260,12 @@ export default function Events() {
             {/* Modal Header */}
             <div className="event-modal-header">
               <div className="modal-header-info">
-                <span className="modal-event-badge">{selectedEvent.badge}</span>
-                <h3 className="modal-event-title">{selectedEvent.title}</h3>
+                <span className="modal-event-badge">{selectedEvent.badge || selectedEvent.category || 'Event'}</span>
+                <h3 className="modal-event-title">{selectedEvent.title || 'Event Details'}</h3>
                 <div className="modal-event-meta">
-                  <span><Calendar size={13} /> {selectedEvent.date}</span>
-                  <span><Clock size={13} /> {selectedEvent.time}</span>
-                  <span><MapPin size={13} /> {selectedEvent.venue}</span>
+                  <span><Calendar size={13} /> {selectedEvent.event_date || selectedEvent.date || 'Upcoming'}</span>
+                  <span><Clock size={13} /> {selectedEvent.time || '10:00 AM – 4:30 PM'}</span>
+                  <span><MapPin size={13} /> {selectedEvent.venue || 'Robotics Lab, ABESEC'}</span>
                 </div>
               </div>
 
@@ -494,11 +526,11 @@ export default function Events() {
                       </div>
                       <div className="pass-detail-cell">
                         <span className="cell-label">DATE &amp; TIME</span>
-                        <span className="cell-value">{selectedEvent.date} ({selectedEvent.time})</span>
+                        <span className="cell-value">{selectedEvent.event_date || selectedEvent.date || 'Upcoming'} ({selectedEvent.time || 'TBA'})</span>
                       </div>
                       <div className="pass-detail-cell">
                         <span className="cell-label">LOCATION</span>
-                        <span className="cell-value">{selectedEvent.venue}</span>
+                        <span className="cell-value">{selectedEvent.venue || 'Robotics Lab, ABESEC'}</span>
                       </div>
                     </div>
                   </div>
