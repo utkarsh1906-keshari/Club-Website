@@ -7,6 +7,7 @@ import {
   AlertTriangle 
 } from 'lucide-react';
 import { galleryService } from '../lib/dataService';
+import ImageUpload from '../components/ImageUpload';
 
 export default function GalleryAdmin() {
   const [items, setItems] = useState([]);
@@ -132,6 +133,10 @@ export default function GalleryAdmin() {
                   src={item.image_url || item.image || '/abes/bootcamp.webp'} 
                   alt={item.title} 
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = '/abes/bootcamp.webp';
+                  }}
                 />
                 <span className="tag-pill" style={{ position: 'absolute', top: '0.5rem', left: '0.5rem', background: 'rgba(0,0,0,0.75)', color: '#fff', border: 'none' }}>
                   {item.category}
@@ -228,17 +233,20 @@ export default function GalleryAdmin() {
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Image URL *</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.image_url}
-                  placeholder="/abes/fpv-assembly.webp or https://supabase-storage/..."
-                  onChange={e => setFormData({ ...formData, image_url: e.target.value })}
-                  style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-                />
-              </div>
+              <ImageUpload
+                label="Gallery Photo"
+                value={formData.image_url}
+                onChange={(url) => setFormData(prev => ({ ...prev, image_url: url }))}
+                fallbackImage="/abes/bootcamp.webp"
+                presets={[
+                  { label: 'FPV Assembly', url: '/abes/fpv-assembly.webp' },
+                  { label: 'RobotoHack', url: '/abes/robotohack.webp' },
+                  { label: 'Circuit Bid', url: '/abes/circuit-bid.webp' },
+                  { label: 'Bootcamp', url: '/abes/bootcamp.webp' },
+                  { label: 'Simulation', url: '/abes/proteus-simulink.webp' },
+                  { label: 'Flight Arena', url: '/abes/bottom-banner.webp' }
+                ]}
+              />
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Badge Tag</label>

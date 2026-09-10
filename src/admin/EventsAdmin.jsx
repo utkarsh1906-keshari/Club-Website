@@ -11,6 +11,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import { eventsService, eventRegistrationsService, normalizeImageUrl } from '../lib/dataService';
+import ImageUpload from '../components/ImageUpload';
 
 export default function EventsAdmin() {
   const [events, setEvents] = useState([]);
@@ -459,117 +460,20 @@ export default function EventsAdmin() {
                 />
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>
-                  Poster / Image URL or Upload
-                </label>
-                
-                {/* Image controls: URL input + Upload File button */}
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <input
-                    type="text"
-                    value={formData.image_url}
-                    placeholder="/abes/bootcamp.webp or https://..."
-                    onChange={e => {
-                      setFormData({ ...formData, image_url: e.target.value });
-                      setImageError(false);
-                    }}
-                    onBlur={e => {
-                      if (e.target.value) {
-                        setFormData(prev => ({ ...prev, image_url: normalizeImageUrl(prev.image_url) }));
-                      }
-                    }}
-                    style={{ flex: 1, padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-                  />
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    accept="image/*" 
-                    onChange={handleImageFileUpload} 
-                    style={{ display: 'none' }} 
-                  />
-                  <button 
-                    type="button" 
-                    onClick={() => fileInputRef.current?.click()} 
-                    className="btn btn-secondary" 
-                    style={{ gap: '0.4rem', whiteSpace: 'nowrap', fontSize: '0.85rem' }}
-                    disabled={isUploading}
-                  >
-                    <Upload size={14} /> {isUploading ? 'Compressing...' : 'Upload Photo'}
-                  </button>
-                </div>
-
-                {/* Preset Club Posters Quick Selection */}
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <span style={{ fontSize: '0.76rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '0.3rem' }}>
-                    Quick Select Verified Posters:
-                  </span>
-                  <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                    {[
-                      { label: 'Bootcamp', url: '/abes/bootcamp.webp' },
-                      { label: 'Circuit Bid', url: '/abes/circuit-bid.webp' },
-                      { label: 'FPV Assembly', url: '/abes/fpv-assembly.webp' },
-                      { label: 'Proteus Simulink', url: '/abes/proteus-simulink.webp' },
-                      { label: 'RobotoHack', url: '/abes/robotohack.webp' },
-                      { label: 'Lab Arena', url: '/abes/bottom-banner.webp' }
-                    ].map(p => (
-                      <button
-                        key={p.url}
-                        type="button"
-                        onClick={() => {
-                          setFormData(prev => ({ ...prev, image_url: p.url }));
-                          setImageError(false);
-                        }}
-                        style={{
-                          fontSize: '0.75rem',
-                          padding: '0.2rem 0.55rem',
-                          borderRadius: '4px',
-                          border: formData.image_url === p.url ? '1px solid #8b1d24' : '1px solid var(--color-border)',
-                          background: formData.image_url === p.url ? 'rgba(139, 29, 36, 0.12)' : 'var(--color-bg-base)',
-                          color: formData.image_url === p.url ? '#8b1d24' : 'var(--color-text-secondary)',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Live Image Preview */}
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '1rem', 
-                  padding: '0.75rem', 
-                  borderRadius: '6px', 
-                  background: 'var(--color-bg-elevated)', 
-                  border: '1px solid var(--color-border)' 
-                }}>
-                  <div style={{ width: '80px', height: '52px', borderRadius: '4px', overflow: 'hidden', background: '#000', flexShrink: 0 }}>
-                    <img 
-                      src={formData.image_url || '/abes/bootcamp.webp'} 
-                      alt="Preview" 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = '/abes/bootcamp.webp';
-                        setImageError(true);
-                      }}
-                      onLoad={() => setImageError(false)}
-                    />
-                  </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
-                    {imageError ? (
-                      <span style={{ color: '#e11d48', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                        <AlertTriangle size={13} /> URL failed to load. Fallback poster (/abes/bootcamp.webp) will be used.
-                      </span>
-                    ) : (
-                      <span>Live Poster Preview &bull; Ready to display on site</span>
-                    )}
-                  </div>
-                </div>
-              </div>
+              <ImageUpload
+                label="Event Poster Photo"
+                value={formData.image_url}
+                onChange={(url) => setFormData(prev => ({ ...prev, image_url: url }))}
+                fallbackImage="/abes/bootcamp.webp"
+                presets={[
+                  { label: 'Bootcamp', url: '/abes/bootcamp.webp' },
+                  { label: 'Circuit Bid', url: '/abes/circuit-bid.webp' },
+                  { label: 'FPV Assembly', url: '/abes/fpv-assembly.webp' },
+                  { label: 'Proteus Simulink', url: '/abes/proteus-simulink.webp' },
+                  { label: 'RobotoHack', url: '/abes/robotohack.webp' },
+                  { label: 'Lab Arena', url: '/abes/bottom-banner.webp' }
+                ]}
+              />
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Highlights (comma separated)</label>

@@ -8,6 +8,7 @@ import {
   AlertTriangle 
 } from 'lucide-react';
 import { projectsService, domainsService } from '../lib/dataService';
+import ImageUpload from '../components/ImageUpload';
 
 export default function ProjectsAdmin() {
   const [projects, setProjects] = useState([]);
@@ -239,6 +240,10 @@ export default function ProjectsAdmin() {
                           src={proj.image_url || '/abes/bottom-banner.webp'} 
                           alt="" 
                           style={{ width: '52px', height: '38px', objectFit: 'cover', borderRadius: '4px' }} 
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = '/abes/bottom-banner.webp';
+                          }}
                         />
                         <div>
                           <strong>{proj.title || proj.name}</strong>
@@ -376,16 +381,19 @@ export default function ProjectsAdmin() {
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Project Poster / Image URL</label>
-                <input
-                  type="text"
-                  value={formData.image_url}
-                  placeholder="/abes/bootcamp.webp or https://..."
-                  onChange={e => setFormData({ ...formData, image_url: e.target.value })}
-                  style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-                />
-              </div>
+              <ImageUpload
+                label="Project Cover Photo"
+                value={formData.image_url}
+                onChange={(url) => setFormData(prev => ({ ...prev, image_url: url }))}
+                fallbackImage="/abes/bottom-banner.webp"
+                presets={[
+                  { label: 'Flight Arena', url: '/abes/bottom-banner.webp' },
+                  { label: 'Circuit Hardware', url: '/abes/circuit-bid.webp' },
+                  { label: 'Proteus Simulation', url: '/abes/proteus-simulink.webp' },
+                  { label: 'FPV Quad', url: '/abes/fpv-assembly.webp' },
+                  { label: 'Bootcamp Drone', url: '/abes/bootcamp.webp' }
+                ]}
+              />
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>

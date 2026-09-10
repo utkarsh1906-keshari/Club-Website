@@ -9,6 +9,7 @@ import {
   Tag
 } from 'lucide-react';
 import { membersService, teamCategoriesService, DEFAULT_TEAM_CATEGORIES } from '../lib/dataService';
+import ImageUpload from '../components/ImageUpload';
 
 export default function TeamAdmin() {
   const [members, setMembers] = useState([]);
@@ -257,6 +258,10 @@ export default function TeamAdmin() {
                           src={m.image_url || m.image || '/club-emblem.png'} 
                           alt="" 
                           style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '50%', background: 'var(--color-bg-elevated)' }} 
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = '/club-emblem.png';
+                          }}
                         />
                         <div>
                           <strong>{m.name}</strong>
@@ -479,16 +484,19 @@ export default function TeamAdmin() {
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Photo / Avatar URL</label>
-                <input
-                  type="text"
-                  value={formData.image_url}
-                  placeholder="/abes/vishal.jpeg or https://..."
-                  onChange={e => setFormData({ ...formData, image_url: e.target.value })}
-                  style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
-                />
-              </div>
+              <ImageUpload
+                label="Member Profile Photo"
+                value={formData.image_url}
+                onChange={(url) => setFormData(prev => ({ ...prev, image_url: url }))}
+                fallbackImage="/club-emblem.png"
+                shape="circle"
+                presets={[
+                  { label: 'Club Emblem', url: '/club-emblem.png' },
+                  { label: 'Vishal', url: '/abes/vishal.jpeg' },
+                  { label: 'Ayush Tyagi', url: '/abes/ayush-tyagi.jpeg' },
+                  { label: 'Shreya Vishwakarma', url: '/abes/shreya-vishwakarma.webp' }
+                ]}
+              />
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Short Bio</label>
