@@ -151,7 +151,19 @@ CREATE TABLE IF NOT EXISTS public.announcements (
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 9. ADMIN USERS & ROLES TABLE
+-- 10. ACHIEVEMENTS TABLE
+CREATE TABLE IF NOT EXISTS public.achievements (
+    id TEXT PRIMARY KEY,
+    year TEXT NOT NULL,
+    title TEXT NOT NULL,
+    category TEXT NOT NULL,
+    description TEXT NOT NULL,
+    badge TEXT,
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 11. ADMIN USERS & ROLES TABLE
 CREATE TABLE IF NOT EXISTS public.admin_users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     auth_user_id UUID,
@@ -176,7 +188,11 @@ ALTER TABLE public.gallery ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.recruitment_cycles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.achievements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_users ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public Read Achievements" ON public.achievements FOR SELECT USING (true);
+CREATE POLICY "Admin Full Access Achievements" ON public.achievements FOR ALL USING (auth.role() = 'authenticated');
 
 -- Anonymous public read policies
 CREATE POLICY "Public Read Domains" ON public.domains FOR SELECT USING (true);

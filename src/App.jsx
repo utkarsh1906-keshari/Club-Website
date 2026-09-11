@@ -20,6 +20,7 @@ import Contact from './pages/Contact';
 
 // Admin Pages
 import Dashboard from './admin/Dashboard';
+import AchievementsAdmin from './admin/AchievementsAdmin';
 import EventsAdmin from './admin/EventsAdmin';
 import ProjectsAdmin from './admin/ProjectsAdmin';
 import TeamAdmin from './admin/TeamAdmin';
@@ -54,6 +55,7 @@ function App() {
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<Dashboard />} />
+              <Route path="achievements" element={<AchievementsAdmin />} />
               <Route path="events" element={<EventsAdmin />} />
               <Route path="projects" element={<ProjectsAdmin />} />
               <Route path="team" element={<TeamAdmin />} />

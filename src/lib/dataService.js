@@ -574,6 +574,45 @@ const SEED_ANNOUNCEMENTS = [
   }
 ];
 
+const SEED_ACHIEVEMENTS = [
+  {
+    id: 'ach-1',
+    year: '2026',
+    title: '1st Place – National Collegiate UAV Grand Challenge',
+    category: 'Competition Win',
+    description: 'Our AeroHawk search-and-rescue team secured first prize in autonomous target identification and payload delivery under adverse wind conditions.',
+    badge: '1st Prize',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'ach-2',
+    year: '2026',
+    title: 'Best Hardware Innovation – Inter-University Hackathon',
+    category: 'Award',
+    description: 'Recognized for our FPGA-accelerated IMU telemetry filter designed on Xilinx Artix-7, outperforming software implementations by 8x.',
+    badge: 'Hardware',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'ach-3',
+    year: '2025',
+    title: 'Runner-Up – Autonomous Ground Rover Challenge',
+    category: 'Competition Win',
+    description: 'Our quadruped platform successfully navigated a 500-meter unstructured obstacle course using LiDAR SLAM and ROS2.',
+    badge: '2nd Prize',
+    created_at: new Date().toISOString()
+  },
+  {
+    id: 'ach-4',
+    year: '2025',
+    title: 'Institutional Research Grant for Drone Safety',
+    category: 'Milestone',
+    description: 'Awarded research seed funding to develop geo-fenced fail-safe return-to-launch protocols for campus aerial safety.',
+    badge: 'Grant',
+    created_at: new Date().toISOString()
+  }
+];
+
 // Normalization & Sanitization Helpers
 export function normalizeImageUrl(url) {
   if (!url || typeof url !== 'string') return '/abes/bootcamp.webp';
@@ -1492,14 +1531,120 @@ export const announcementsService = {
   }
 };
 
+export const achievementsService = {
+  async getAll() {
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('achievements')
+          .select('*')
+          .order('year', { ascending: false });
+        if (!error && data && data.length > 0) return data;
+      } catch (err) {
+        console.warn('Supabase achievements fetch failed, using local cache:', err);
+      }
+    }
+    return getLocal('achievements', SEED_ACHIEVEMENTS);
+  },
+
+  async getById(id) {
+    const list = await this.getAll();
+    return list.find(a => a.id === id) || null;
+  },
+
+  async create(achievement) {
+    const newAch = {
+      id: 'ach-' + Date.now(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      ...achievement
+    };
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('achievements').insert([newAch]).select().single();
+        if (!error && data) {
+          const list = [data, ...getLocal('achievements', SEED_ACHIEVEMENTS)];
+          setLocal('achievements', list);
+          return data;
+        }
+      } catch (err) {
+        console.warn('Supabase achievement create error:', err);
+      }
+    }
+    const list = [newAch, ...getLocal('achievements', SEED_ACHIEVEMENTS)];
+    setLocal('achievements', list);
+    return newAch;
+  },
+
+  async update(id, updates) {
+    const payload = {
+      ...updates,
+      updated_at: new Date().toISOString()
+    };
+
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('achievements')
+          .update(payload)
+          .eq('id', id)
+          .select()
+          .single();
+        if (!error && data) {
+          const list = getLocal('achievements', SEED_ACHIEVEMENTS).map(a =>
+            a.id === id ? data : a
+          );
+          setLocal('achievements', list);
+          return data;
+        }
+      } catch (err) {
+        console.warn('Supabase achievement update error:', err);
+      }
+    }
+    const list = getLocal('achievements', SEED_ACHIEVEMENTS).map(a =>
+      a.id === id ? { ...a, ...payload } : a
+    );
+    setLocal('achievements', list);
+    return list.find(a => a.id === id);
+  },
+
+  async delete(id) {
+    if (supabase) {
+      try {
+        await supabase.from('achievements').delete().eq('id', id);
+      } catch (err) {
+        console.warn('Supabase achievement delete error:', err);
+      }
+    }
+    const list = getLocal('achievements', SEED_ACHIEVEMENTS).filter(a => a.id !== id);
+    setLocal('achievements', list);
+    return true;
+  },
+
+  async resetDefaults() {
+    if (supabase) {
+      try {
+        await supabase.from('achievements').delete().neq('id', 'placeholder');
+        await supabase.from('achievements').insert(SEED_ACHIEVEMENTS);
+      } catch (err) {
+        console.warn('Supabase achievements reset error:', err);
+      }
+    }
+    setLocal('achievements', SEED_ACHIEVEMENTS);
+    return SEED_ACHIEVEMENTS;
+  }
+};
+
 export const statsService = {
   async getDashboardStats() {
-    const [events, projects, members, applications, gallery] = await Promise.all([
+    const [events, projects, members, applications, gallery, achievements] = await Promise.all([
       eventsService.getAll(),
       projectsService.getAll(),
       membersService.getAll(),
       applicationsService.getAll(),
-      galleryService.getAll()
+      galleryService.getAll(),
+      achievementsService.getAll()
     ]);
 
     return {
@@ -1508,6 +1653,7 @@ export const statsService = {
       membersCount: members.length,
       applicationsCount: applications.length,
       galleryCount: gallery.length,
+      achievementsCount: achievements.length,
       newApplicationsCount: applications.filter(a => a.status === 'New').length
     };
   }

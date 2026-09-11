@@ -5,6 +5,7 @@ import {
   Users, 
   FileText, 
   Image as ImageIcon, 
+  Trophy,
   ArrowUpRight, 
   CheckCircle, 
   Clock, 
@@ -24,6 +25,7 @@ export default function Dashboard() {
     membersCount: 0,
     applicationsCount: 0,
     galleryCount: 0,
+    achievementsCount: 0,
     newApplicationsCount: 0
   });
   const [applications, setApplications] = useState([]);
@@ -65,6 +67,7 @@ export default function Dashboard() {
   };
 
   const statCards = [
+    { title: 'Achievements', count: stats.achievementsCount, icon: <Trophy size={20} color="#d97706" />, link: '/admin/achievements' },
     { title: 'Total Events', count: stats.eventsCount, icon: <Calendar size={20} color="var(--color-primary)" />, link: '/admin/events' },
     { title: 'Active Projects', count: stats.projectsCount, icon: <FolderGit2 size={20} color="var(--color-accent-indigo)" />, link: '/admin/projects' },
     { title: 'Club Members', count: stats.membersCount, icon: <Users size={20} color="var(--color-accent-emerald)" />, link: '/admin/team' },
