@@ -1295,17 +1295,60 @@ export const applicationsService = {
       throw new Error('A valid email address is required.');
     }
 
-    // 2. Check for duplicate email in this cycle
-    const isDuplicate = await this.checkEmailExists(cleanEmail, cycle.id);
-    if (isDuplicate) {
-      throw new Error(`An application with email "${app.email}" has already been submitted for the current cycle (${cycle.title}). Multiple submissions are not permitted.`);
+    // 2. Check if an application already exists for this email in current cycle
+    const existingList = await this.getAll(cycle.id);
+    const existingApp = existingList.find(a => (a.email || '').trim().toLowerCase() === cleanEmail);
+
+    if (existingApp) {
+      // Allow re-submission / update: update existing application with candidate's latest details
+      const updatedFields = {
+        name: app.name || existingApp.name,
+        student_id: app.student_id || existingApp.student_id,
+        branch: app.branch || existingApp.branch,
+        year: app.year || existingApp.year,
+        domain: app.domain || existingApp.domain,
+        role: app.role || existingApp.role,
+        reason: app.reason || existingApp.reason,
+        portfolio_url: app.portfolio_url || existingApp.portfolio_url,
+        custom_answers: app.custom_answers || existingApp.custom_answers,
+        updated_at: new Date().toISOString()
+      };
+
+      if (supabase) {
+        try {
+          const { data, error } = await supabase
+            .from('applications')
+            .update(updatedFields)
+            .eq('id', existingApp.id)
+            .select()
+            .single();
+          if (!error && data) {
+            const list = getLocal('applications', SEED_APPLICATIONS).map(a =>
+              a.id === existingApp.id ? data : a
+            );
+            setLocal('applications', list);
+            return { ...data, isUpdated: true };
+          }
+        } catch (err) {
+          console.warn('Supabase application update error:', err);
+        }
+      }
+
+      const merged = { ...existingApp, ...updatedFields, is_updated: true };
+      const list = getLocal('applications', SEED_APPLICATIONS).map(a =>
+        a.id === existingApp.id ? merged : a
+      );
+      setLocal('applications', list);
+      return { ...merged, isUpdated: true };
     }
 
+    // 3. Fresh application creation
     const newApp = {
       id: 'app-' + Date.now(),
       status: 'New',
       cycle_id: cycle.id,
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       ...app,
       email: cleanEmail
     };

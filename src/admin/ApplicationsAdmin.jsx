@@ -10,7 +10,8 @@ import {
   Plus,
   Check,
   Eye,
-  EyeOff
+  EyeOff,
+  RotateCcw
 } from 'lucide-react';
 import { applicationsService, recruitmentService, DEFAULT_FORM_QUESTIONS } from '../lib/dataService';
 
@@ -66,12 +67,56 @@ export default function ApplicationsAdmin() {
     if (!cycleConfig) return;
     setCycleLoading(true);
     try {
-      const updated = await recruitmentService.updateCycleConfig({
-        is_active: !cycleConfig.is_active
-      });
+      const willBeActive = !cycleConfig.is_active;
+      const updates = {
+        is_active: willBeActive,
+        updated_at: new Date().toISOString()
+      };
+
+      // Option 1: When reopening portal from closed to open, start a fresh round
+      // so all students can apply afresh without old browser lockouts
+      if (willBeActive) {
+        const timestamp = Date.now();
+        updates.id = `cycle-${timestamp}`;
+        updates.opened_at = new Date().toISOString();
+        const currentRound = cycleConfig.round_number || 1;
+        updates.round_number = currentRound + 1;
+        updates.title = `Recruitment Drive (Round ${updates.round_number})`;
+      }
+
+      const updated = await recruitmentService.updateCycleConfig(updates);
       setCycleConfig(updated);
+      const apps = await applicationsService.getAll();
+      setApplications(apps);
     } catch (err) {
       console.error('Failed to toggle recruitment status:', err);
+    } finally {
+      setCycleLoading(false);
+    }
+  };
+
+  // Dedicated button to start a new recruitment round/drive explicitly
+  const handleStartNewRound = async () => {
+    if (!window.confirm('Start a new recruitment round? All previous application records will remain safely saved in your database, and students will be able to apply afresh.')) {
+      return;
+    }
+    setCycleLoading(true);
+    try {
+      const timestamp = Date.now();
+      const nextRound = (cycleConfig?.round_number || 1) + 1;
+      const updated = await recruitmentService.updateCycleConfig({
+        id: `cycle-${timestamp}`,
+        is_active: true,
+        round_number: nextRound,
+        title: `Recruitment Drive (Round ${nextRound})`,
+        opened_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+      setCycleConfig(updated);
+      const apps = await applicationsService.getAll();
+      setApplications(apps);
+    } catch (err) {
+      console.error('Failed to start new round:', err);
     } finally {
       setCycleLoading(false);
     }
@@ -188,8 +233,8 @@ export default function ApplicationsAdmin() {
           }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-            {/* Left: Status */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {/* Left: Status & Round */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
               <h2 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
                 Joining Applications
               </h2>
@@ -198,11 +243,11 @@ export default function ApplicationsAdmin() {
                 style={{ fontSize: '0.78rem', padding: '0.25rem 0.75rem' }}
               >
                 <span className={`status-dot ${!cycleConfig.is_active ? 'status-dot-inactive' : ''}`}></span>
-                {cycleConfig.is_active ? 'Open' : 'Closed'}
+                {cycleConfig.is_active ? `Open • Round ${cycleConfig.round_number || 1}` : 'Closed'}
               </span>
             </div>
 
-            {/* Right: Toggle Open/Close & Question Manager */}
+            {/* Right: Toggle Open/Close, New Round & Question Manager */}
             <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap', alignItems: 'center' }}>
               {/* Open / Close Button */}
               <button
@@ -220,7 +265,20 @@ export default function ApplicationsAdmin() {
                 }}
               >
                 <Power size={14} />
-                {cycleConfig.is_active ? 'Close Applications' : 'Open Applications'}
+                {cycleConfig.is_active ? 'Close Applications' : 'Open Applications (New Round)'}
+              </button>
+
+              {/* Start New Round Button */}
+              <button
+                type="button"
+                disabled={cycleLoading}
+                onClick={handleStartNewRound}
+                className="btn btn-secondary"
+                style={{ fontSize: '0.85rem', padding: '0.5rem 0.95rem', gap: '0.35rem' }}
+                title="Start a new recruitment round while keeping previous submissions saved"
+              >
+                <RotateCcw size={13} />
+                New Round
               </button>
 
               {/* Manage Form Questions */}
@@ -325,7 +383,21 @@ export default function ApplicationsAdmin() {
                 filteredApps.map(app => (
                   <tr key={app.id}>
                     <td>
-                      <strong>{app.name}</strong>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <strong>{app.name}</strong>
+                        {app.is_updated && (
+                          <span style={{
+                            fontSize: '0.68rem',
+                            padding: '0.1rem 0.4rem',
+                            borderRadius: '4px',
+                            background: 'rgba(59, 130, 246, 0.1)',
+                            color: '#2563eb',
+                            fontWeight: 600
+                          }}>
+                            Updated
+                          </span>
+                        )}
+                      </div>
                       <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
                         {app.email}
                       </div>

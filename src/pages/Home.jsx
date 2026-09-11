@@ -171,9 +171,6 @@ export default function Home() {
             <Link to="/events" className="btn btn-secondary">
               Explore Events
             </Link>
-            <Link to="/join" className="btn btn-outline-light">
-              Apply to Join
-            </Link>
           </div>
 
           {/* Metrics Strip */}

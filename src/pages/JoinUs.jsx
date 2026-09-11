@@ -33,6 +33,7 @@ export default function JoinUs() {
 
   const [customAnswers, setCustomAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
+  const [isUpdateSubmission, setIsUpdateSubmission] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isDuplicate, setIsDuplicate] = useState(false);
@@ -50,7 +51,14 @@ export default function JoinUs() {
         if (config && config.id) {
           const prior = localStorage.getItem(`drc_applied_${config.id}`);
           if (prior) {
-            setAlreadySubmittedEmail(prior);
+            // Verify if submission still exists in database/cache
+            const exists = await applicationsService.checkEmailExists(prior, config.id);
+            if (exists) {
+              setAlreadySubmittedEmail(prior);
+            } else {
+              localStorage.removeItem(`drc_applied_${config.id}`);
+              setAlreadySubmittedEmail(null);
+            }
           }
         }
       } catch (err) {
@@ -93,20 +101,7 @@ export default function JoinUs() {
         return;
       }
 
-      // Duplicate email check
-      if (cycleConfig?.id) {
-        const exists = await applicationsService.checkEmailExists(cleanEmail, cycleConfig.id);
-        if (exists) {
-          setIsDuplicate(true);
-          setErrorMsg(
-            `An application with email "${formData.email}" has already been submitted for ${cycleConfig.title || 'this cycle'}. Multiple submissions are not permitted.`
-          );
-          setLoading(false);
-          return;
-        }
-      }
-
-      await applicationsService.create({
+      const res = await applicationsService.create({
         name: formData.name || 'Candidate Applicant',
         email: cleanEmail,
         student_id: formData.studentId || 'N/A',
@@ -119,6 +114,10 @@ export default function JoinUs() {
         custom_answers: customAnswers
       });
 
+      if (res?.isUpdated) {
+        setIsUpdateSubmission(true);
+      }
+
       if (cycleConfig?.id) {
         localStorage.setItem(`drc_applied_${cycleConfig.id}`, cleanEmail);
         setAlreadySubmittedEmail(cleanEmail);
@@ -128,9 +127,6 @@ export default function JoinUs() {
     } catch (err) {
       console.error('Application submission error:', err);
       const msg = err.message || 'Failed to submit application. Please check your details and try again.';
-      if (msg.toLowerCase().includes('already been submitted') || msg.toLowerCase().includes('multiple submissions')) {
-        setIsDuplicate(true);
-      }
       setErrorMsg(msg);
     } finally {
       setLoading(false);
@@ -266,16 +262,19 @@ export default function JoinUs() {
               <div className="success-icon-box">
                 <CheckCircle2 size={48} color="var(--color-accent-emerald)" />
               </div>
-              <h2>Application Received!</h2>
+              <h2>{isUpdateSubmission ? 'Application Updated!' : 'Application Received!'}</h2>
               <p>
-                Thank you for applying, <strong>{formData.name}</strong>. Your recruitment submission has been recorded successfully.
+                {isUpdateSubmission 
+                  ? <>Thank you, <strong>{formData.name}</strong>. Your recruitment submission has been updated with your latest information.</>
+                  : <>Thank you for applying, <strong>{formData.name}</strong>. Your recruitment submission has been recorded successfully.</>
+                }
               </p>
               <p className="success-subtext">
                 Club domain leads review applications iteratively. You will receive an interview / lab briefing invitation via <strong>{formData.email}</strong>.
               </p>
               
               <div className="success-note">
-                <strong>Notice:</strong> Your application is registered with email <code>{formData.email}</code>. Duplicate submissions are not accepted.
+                <strong>Notice:</strong> Your application is registered with email <code>{formData.email}</code>. You can return anytime while applications remain open to update your responses.
               </div>
 
               <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -293,14 +292,25 @@ export default function JoinUs() {
               <div className="form-header">
                 <h2>Candidate Application Form</h2>
                 <p>
-                  Please fill out the authentic details below. Only one submission is permitted per student email.
+                  Please fill out the authentic details below.
                 </p>
 
                 {alreadySubmittedEmail && (
-                  <div className="already-applied-banner">
-                    <Clock size={16} />
+                  <div className="already-applied-banner" style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.65rem',
+                    padding: '0.75rem 1rem',
+                    background: 'rgba(59, 130, 246, 0.08)',
+                    border: '1px solid rgba(59, 130, 246, 0.25)',
+                    borderRadius: '8px',
+                    color: 'var(--color-text-primary)',
+                    fontSize: '0.85rem',
+                    marginBottom: '1rem'
+                  }}>
+                    <CheckCircle2 size={18} color="#2563eb" style={{ flexShrink: 0 }} />
                     <span>
-                      Notice: You previously submitted an application with <strong>{alreadySubmittedEmail}</strong>. Submitting again with the same email will be rejected.
+                      An application with <strong>{alreadySubmittedEmail}</strong> was previously recorded. You can submit this form again anytime to update your details or preferences.
                     </span>
                   </div>
                 )}
