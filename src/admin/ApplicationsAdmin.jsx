@@ -9,6 +9,7 @@ import {
   SlidersHorizontal,
   Plus,
   Check,
+  CheckCheck,
   Eye,
   EyeOff,
   RotateCcw
@@ -182,6 +183,16 @@ export default function ApplicationsAdmin() {
     }
   };
 
+  const handleMarkAllAsReviewed = async () => {
+    try {
+      await applicationsService.markAllAsReviewed();
+      const updated = await applicationsService.getAll();
+      setApplications(updated);
+    } catch (err) {
+      console.error('Failed to mark all as reviewed:', err);
+    }
+  };
+
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
     try {
@@ -209,6 +220,7 @@ export default function ApplicationsAdmin() {
   });
 
   const activeQuestionsCount = questions.filter(q => q.active !== false).length;
+  const newCount = applications.filter(a => a.status === 'New').length;
 
   return (
     <div className="admin-page-container">
@@ -318,7 +330,7 @@ export default function ApplicationsAdmin() {
         </div>
 
         {/* Status filters */}
-        <div style={{ display: 'flex', gap: '0.3rem' }}>
+        <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center', flexWrap: 'wrap' }}>
           {['all', 'New', 'Under Review', 'Accepted', 'Rejected'].map(s => (
             <button
               key={s}
@@ -330,6 +342,26 @@ export default function ApplicationsAdmin() {
               {s.toUpperCase()} {s === 'all' ? `(${applications.length})` : `(${applications.filter(a => a.status === s).length})`}
             </button>
           ))}
+
+          {newCount > 0 && (
+            <button
+              type="button"
+              onClick={handleMarkAllAsReviewed}
+              className="btn btn-secondary"
+              style={{
+                padding: '0.35rem 0.85rem',
+                fontSize: '0.8rem',
+                gap: '0.35rem',
+                background: '#fef3c7',
+                color: '#b45309',
+                border: '1px solid #fcd34d',
+                fontWeight: 600
+              }}
+              title="Mark all fresh submissions as Under Review"
+            >
+              <CheckCheck size={14} /> Mark All Reviewed ({newCount})
+            </button>
+          )}
         </div>
 
         {/* Domain filter dropdown */}

@@ -501,7 +501,7 @@ const SEED_APPLICATIONS = [
     role: 'Technical',
     reason: 'Interested in ROS2 Nav2 autonomous path planning and computer vision deployment on drones.',
     portfolio_url: 'https://github.com/aarav-ai',
-    status: 'New',
+    status: 'Under Review',
     created_at: new Date(Date.now() - 2 * 86400000).toISOString()
   },
   {
@@ -1307,7 +1307,20 @@ export const applicationsService = {
         console.warn('Supabase applications fetch failed, using local cache:', err);
       }
     }
-    const all = getLocal('applications', SEED_APPLICATIONS);
+    const raw = getLocal('applications', SEED_APPLICATIONS);
+    // Sanitize seed demo applications so mock records never show as New
+    let migrated = false;
+    const all = raw.map(a => {
+      if (a.id === 'app-1' && a.status === 'New') {
+        migrated = true;
+        return { ...a, status: 'Under Review' };
+      }
+      return a;
+    });
+    if (migrated) {
+      setLocal('applications', all);
+    }
+
     if (cycleId) {
       return all.filter(a => (a.cycle_id || 'cycle-2026-2027') === cycleId);
     }
@@ -1447,6 +1460,23 @@ export const applicationsService = {
     const list = getLocal('applications', SEED_APPLICATIONS).filter(a => a.id !== id);
     setLocal('applications', list);
     return true;
+  },
+
+  async markAllAsReviewed() {
+    const all = await this.getAll();
+    const updated = all.map(a => a.status === 'New' ? { ...a, status: 'Under Review', updated_at: new Date().toISOString() } : a);
+    setLocal('applications', updated);
+    if (supabase) {
+      try {
+        await supabase
+          .from('applications')
+          .update({ status: 'Under Review', updated_at: new Date().toISOString() })
+          .eq('status', 'New');
+      } catch (err) {
+        console.warn('Supabase markAllAsReviewed error:', err);
+      }
+    }
+    return updated;
   }
 };
 
