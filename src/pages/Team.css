@@ -29,6 +29,25 @@
   flex-wrap: wrap;
 }
 
+@media (max-width: 640px) {
+  .team-hero {
+    padding: var(--spacing-2xl) 0 var(--spacing-xl) 0;
+  }
+
+  .team-filter-bar {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.25rem 0.5rem 0.6rem 0.5rem;
+    scrollbar-width: none;
+  }
+
+  .team-filter-bar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 .team-group-block {
   margin-bottom: var(--spacing-4xl);
 }

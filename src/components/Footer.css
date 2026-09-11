@@ -222,3 +222,15 @@
 .footer-bottom-links a:hover {
   color: var(--color-text-primary);
 }
+
+@media (max-width: 480px) {
+  .footer-bottom {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.75rem;
+  }
+
+  .footer-bottom-links {
+    justify-content: center;
+  }
+}

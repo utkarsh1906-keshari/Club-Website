@@ -1390,21 +1390,146 @@
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .metrics-strip {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    padding: 1rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.85rem;
+    padding: 1.15rem 1rem;
+    width: 100%;
   }
 
   .metric-divider {
     display: none;
   }
 
+  .metric-box {
+    padding: 0.5rem 0.25rem;
+  }
+
+  .metric-number {
+    font-size: 1.55rem;
+  }
+
+  .events-tab-filter {
+    overflow-x: auto;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    padding: 0.35rem 0.5rem;
+    scrollbar-width: none;
+  }
+
+  .events-tab-filter::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tab-filter-btn {
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 640px) {
   .emblem-card-top {
     flex-direction: column;
     gap: 0.75rem;
+  }
+
+  .emblem-badges-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .highlighted-content-col {
+    padding: 1.25rem;
+  }
+
+  .highlighted-title {
+    font-size: 1.5rem;
+  }
+
+  .join-criteria-card,
+  .join-connect-card {
+    padding: 1.5rem 1.15rem;
+  }
+
+  .faculty-advisor-card {
+    padding: 1.5rem 1rem;
+  }
+
+  .advisor-photo-container {
+    width: 190px;
+    height: 240px;
+  }
+
+  .portal-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .abes-hero-banner {
+    padding: var(--spacing-2xl) 0 var(--spacing-xl) 0;
+    min-height: auto;
+  }
+
+  .hero-title {
+    font-size: 2.1rem;
+  }
+
+  .hero-tagline {
+    font-size: 1rem;
+  }
+
+  .hero-cta-group {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.75rem;
+  }
+
+  .hero-cta-group .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .metrics-strip {
+    gap: 0.65rem;
+    padding: 1rem 0.75rem;
+  }
+
+  .metric-number {
+    font-size: 1.35rem;
+  }
+
+  .metric-label {
+    font-size: 0.65rem;
+  }
+
+  .official-events-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .coordinators-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+
+  .student-leads-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .bottom-banner-buttons {
+    flex-direction: column;
+    width: 100%;
+    gap: 0.75rem;
+  }
+
+  .bottom-banner-buttons .btn,
+  .bottom-banner-buttons .btn-outline-light {
+    width: 100%;
+    justify-content: center;
   }
 }
 

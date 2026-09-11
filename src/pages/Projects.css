@@ -88,6 +88,33 @@
   gap: 0.5rem;
 }
 
+@media (max-width: 640px) {
+  .projects-hero {
+    padding: var(--spacing-2xl) 0 var(--spacing-xl) 0;
+  }
+
+  .domain-filters-bar {
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0.25rem 0.5rem 0.6rem 0.5rem;
+    scrollbar-width: none;
+  }
+
+  .domain-filters-bar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-pill-btn {
+    flex-shrink: 0;
+  }
+
+  .project-card-body {
+    padding: 1.25rem 1rem;
+  }
+}
+
 .filter-pill-btn {
   display: inline-flex;
   align-items: center;

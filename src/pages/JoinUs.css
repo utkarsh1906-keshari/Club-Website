@@ -498,3 +498,33 @@
   font-weight: 600;
   color: var(--color-primary);
 }
+
+@media (max-width: 640px) {
+  .join-hero {
+    padding: var(--spacing-2xl) 0 var(--spacing-xl) 0;
+  }
+
+  .closed-recruitment-card {
+    padding: 1.5rem 1.15rem;
+  }
+
+  .form-card {
+    padding: 1.35rem 1rem;
+  }
+
+  .success-card {
+    padding: 2rem 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .form-actions {
+    justify-content: stretch;
+    width: 100%;
+  }
+
+  .submit-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
