@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Calendar, 
@@ -19,14 +19,18 @@ import './AdminLayout.css';
 
 export default function AdminLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
 
-  // Check for active authorized session
+  // Check for active authorized session in sessionStorage only
   const [adminSession, setAdminSession] = useState(() => {
     try {
-      const saved = localStorage.getItem('drc_admin_session');
+      // Clear any legacy persistent localStorage session
+      localStorage.removeItem('drc_admin_session');
+      
+      const saved = sessionStorage.getItem('drc_admin_session');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed && parsed.expiresAt && parsed.expiresAt > Date.now()) {
+        if (parsed && parsed.authenticatedAt) {
           return parsed;
         }
       }
@@ -38,12 +42,30 @@ export default function AdminLayout() {
 
   const handleLogout = () => {
     try {
+      sessionStorage.removeItem('drc_admin_session');
       localStorage.removeItem('drc_admin_session');
     } catch (e) {
       console.error('Logout error:', e);
     }
     setAdminSession(null);
   };
+
+  const handleExitToSite = () => {
+    handleLogout();
+    navigate('/');
+  };
+
+  // Whenever the admin portal layout is exited/unmounted, clear the session so password is required next time
+  useEffect(() => {
+    return () => {
+      try {
+        sessionStorage.removeItem('drc_admin_session');
+        localStorage.removeItem('drc_admin_session');
+      } catch (e) {
+        console.error('Session clear on exit error:', e);
+      }
+    };
+  }, []);
 
   // If user is not an authenticated Faculty Advisor or Club Head, lock the portal and show login
   if (!adminSession) {
@@ -79,10 +101,15 @@ export default function AdminLayout() {
       {/* Sidebar */}
       <aside className="admin-sidebar">
         <div className="admin-sidebar-header">
-          <Link to="/" className="back-to-site">
+          <button 
+            type="button" 
+            onClick={handleExitToSite} 
+            className="back-to-site" 
+            title="Exit Admin Portal and return to Public Site"
+          >
             <ArrowLeft size={16} />
             <span>Public Site</span>
-          </Link>
+          </button>
           <div className="admin-brand">
             <div className="admin-logo-box">
               <img 
@@ -151,14 +178,20 @@ export default function AdminLayout() {
               <span className="profile-name-text">{adminSession.name}</span>
             </div>
 
-            <Link to="/" className="btn btn-secondary topbar-btn">
+            <button 
+              type="button" 
+              onClick={handleExitToSite} 
+              className="btn btn-secondary topbar-btn"
+              title="Exit Admin Portal and return to Website"
+            >
               View Website &rarr;
-            </Link>
+            </button>
 
             <button 
+              type="button"
               onClick={handleLogout} 
               className="btn btn-danger-outline topbar-logout-action"
-              title="Sign Out"
+              title="Exit Admin Portal"
             >
               <LogOut size={15} />
               <span>Exit</span>
