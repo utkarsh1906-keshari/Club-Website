@@ -31,11 +31,21 @@
   }
 }
 
+.footer-brand-col {
+  padding-top: 1.25rem;
+}
+
 .footer-brand-header {
   display: flex;
   align-items: center;
   gap: 1.15rem;
   margin-bottom: var(--spacing-md);
+}
+
+.footer-brand-details {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .footer-dual-logos {
