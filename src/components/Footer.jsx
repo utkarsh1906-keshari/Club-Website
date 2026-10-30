@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Mail, ArrowUpRight, MapPin } from 'lucide-react';
+import { Mail, ArrowUpRight } from 'lucide-react';
 import './Footer.css';
 
 export default function Footer() {
@@ -8,7 +8,7 @@ export default function Footer() {
     <footer className="footer">
       <div className="footer-container">
         <div className="footer-top">
-          {/* Col 1: Brand & Details */}
+          {/* Col 1: Brand Header */}
           <div className="footer-brand-col">
             <div className="footer-brand-header">
               <div className="footer-dual-logos">
@@ -34,17 +34,6 @@ export default function Footer() {
                 <span className="footer-brand-title">DRONE &amp; ROBOTICS CLUB</span>
                 <span className="footer-brand-institution">ABES ENGINEERING COLLEGE &bull; ESTD. 2000</span>
               </div>
-            </div>
-
-            <p className="footer-description">
-              Pioneering aerospace innovation, autonomous drone technology, and embedded robotics systems at ABES Engineering College.
-            </p>
-
-            <div className="footer-campus-info">
-              <span className="footer-campus-badge">
-                <MapPin size={13} className="footer-badge-icon" />
-                Robotics Innovation Hub &bull; Campus NH-09, Ghaziabad
-              </span>
             </div>
           </div>
 

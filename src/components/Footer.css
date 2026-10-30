@@ -1,13 +1,13 @@
 /* ==========================================================================
-   OFFICIAL ABES-STYLE BLACK FOOTER
-   Seamlessly matches ABES top black navbar and covers all empty space
+   BLENDED DARK TECH SLATE FOOTER
+   Blends seamlessly with the dark theme and bottom banner (#0a0f1d)
    ========================================================================== */
 
 .footer {
-  background: #000000 !important;
+  background: #0a0f1d !important;
   color: #f8fafc;
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 3.5rem 0 2rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 3rem 0 1.75rem 0;
   margin-top: auto;
   font-size: 0.9rem;
   width: 100%;
@@ -15,8 +15,8 @@
 }
 
 [data-theme="dark"] .footer {
-  background: #000000 !important;
-  border-top-color: rgba(255, 255, 255, 0.12);
+  background: #0a0f1d !important;
+  border-top-color: rgba(255, 255, 255, 0.08);
 }
 
 .footer-container {
@@ -29,20 +29,20 @@
 
 .footer-top {
   display: grid;
-  grid-template-columns: 2fr 1.15fr 1.05fr 1.3fr;
-  gap: 3.5rem;
-  margin-bottom: 2.75rem;
+  grid-template-columns: 1.4fr 1.1fr 1fr 1.2fr;
+  gap: 3rem;
+  margin-bottom: 2.5rem;
   align-items: start;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1024px) {
   .footer-top {
     grid-template-columns: 1fr 1fr;
     gap: 2.5rem;
   }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 600px) {
   .footer-top {
     grid-template-columns: 1fr;
     gap: 2rem;
@@ -51,7 +51,7 @@
     padding: 0 1.25rem;
   }
   .footer {
-    padding: 2.75rem 0 1.5rem 0;
+    padding: 2.5rem 0 1.5rem 0;
   }
 }
 
@@ -64,7 +64,6 @@
   display: flex;
   align-items: center;
   gap: 1.15rem;
-  margin-bottom: 1rem;
 }
 
 .footer-dual-logos {
@@ -132,37 +131,6 @@
   color: #38bdf8;
   display: block;
   margin-top: 0.3rem;
-}
-
-.footer-description {
-  color: #94a3b8;
-  font-size: 0.875rem;
-  line-height: 1.6;
-  max-width: 440px;
-  margin-bottom: 1rem;
-}
-
-.footer-campus-info {
-  display: flex;
-  align-items: center;
-}
-
-.footer-campus-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-size: 0.775rem;
-  color: #94a3b8;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.35rem 0.75rem;
-  border-radius: 6px;
-  max-width: 100%;
-}
-
-.footer-badge-icon {
-  color: #38bdf8;
-  flex-shrink: 0;
 }
 
 .footer-heading {
@@ -276,7 +244,7 @@
 /* Bottom Bar */
 .footer-bottom {
   padding-top: 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   justify-content: space-between;
   align-items: center;
