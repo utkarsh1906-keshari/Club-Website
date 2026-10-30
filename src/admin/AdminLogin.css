@@ -175,7 +175,8 @@
   margin-bottom: 0.45rem;
 }
 
-.passkey-input-wrapper {
+.passkey-input-wrapper,
+.login-input-wrapper {
   position: relative;
   display: flex;
   align-items: center;
@@ -200,7 +201,8 @@
   }
 }
 
-.login-passkey-input {
+.login-passkey-input,
+.login-field-input {
   width: 100%;
   padding: 0.75rem 2.6rem 0.75rem 0.95rem;
   background: var(--color-bg-base);
@@ -212,19 +214,22 @@
   transition: all var(--transition-fast);
 }
 
-.login-passkey-input:focus {
+.login-passkey-input:focus,
+.login-field-input:focus {
   outline: none;
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px var(--color-primary-subtle, rgba(2, 132, 199, 0.12));
   background: var(--color-bg-surface);
 }
 
-.login-passkey-input.has-error {
+.login-passkey-input.has-error,
+.login-field-input.has-error {
   border-color: #ef4444;
   background-color: rgba(239, 68, 68, 0.02);
 }
 
-.login-passkey-input.has-error:focus {
+.login-passkey-input.has-error:focus,
+.login-field-input.has-error:focus {
   border-color: #ef4444;
   box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
 }
