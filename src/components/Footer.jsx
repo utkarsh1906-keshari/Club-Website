@@ -35,9 +35,6 @@ export default function Footer() {
                 <span className="footer-brand-institution">ABES ENGINEERING COLLEGE &bull; ESTD. 2000</span>
               </div>
             </div>
-            <p className="footer-description">
-              A collegiate multidisciplinary engineering community pioneering research and real-world implementation across AI, Robotics, Embedded VLSI, and Aerial Robotics.
-            </p>
           </div>
 
           {/* Col 2: Domains */}
