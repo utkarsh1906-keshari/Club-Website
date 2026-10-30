@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Eye, EyeOff, ArrowLeft, AlertCircle, Mail, Lock } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, ArrowLeft, AlertCircle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import './AdminLogin.css';
 
 export default function AdminLogin({ onLoginSuccess }) {
@@ -10,6 +11,9 @@ export default function AdminLogin({ onLoginSuccess }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isShaking, setIsShaking] = useState(false);
+
+  const { signIn } = useAuth();
+  const navigate = useNavigate();
 
   const triggerShake = () => {
     setIsShaking(true);
@@ -30,15 +34,18 @@ export default function AdminLogin({ onLoginSuccess }) {
     setIsSubmitting(true);
     setErrorMessage('');
 
-    if (onLoginSuccess) {
-      try {
+    try {
+      if (onLoginSuccess) {
         await onLoginSuccess({ email: cleanEmail, password: cleanPassword });
-      } catch (err) {
-        setErrorMessage(err.message || 'Wrong email or password');
-        triggerShake();
-      } finally {
-        setIsSubmitting(false);
+      } else {
+        await signIn(cleanEmail, cleanPassword);
       }
+      navigate('/admin');
+    } catch (err) {
+      setErrorMessage(err.message || 'Wrong email or password');
+      triggerShake();
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

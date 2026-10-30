@@ -2,6 +2,10 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 
+// Auth & Security
+import { AuthProvider } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+
 // Layouts
 import PublicLayout from './layouts/PublicLayout';
 import AdminLayout from './layouts/AdminLayout';
@@ -30,41 +34,106 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
   return (
-    <Router>
-      <div className="app-container">
-        <ErrorBoundary>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<PublicLayout />}>
-              <Route index element={<Home />} />
-              <Route path="about" element={<About />} />
-              <Route path="domains" element={<Domains />} />
-              <Route path="projects" element={<Projects />} />
-              <Route path="events" element={<Events />} />
-              <Route path="team" element={<Team />} />
-              <Route path="join" element={<JoinUs />} />
-              <Route path="contact" element={<Contact />} />
-            </Route>
+    <AuthProvider>
+      <Router>
+        <div className="app-container">
+          <ErrorBoundary>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<PublicLayout />}>
+                <Route index element={<Home />} />
+                <Route path="about" element={<About />} />
+                <Route path="domains" element={<Domains />} />
+                <Route path="projects" element={<Projects />} />
+                <Route path="events" element={<Events />} />
+                <Route path="team" element={<Team />} />
+                <Route path="join" element={<JoinUs />} />
+                <Route path="contact" element={<Contact />} />
+              </Route>
 
-            {/* Admin Routes */}
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="events" element={<EventsAdmin />} />
-              <Route path="projects" element={<ProjectsAdmin />} />
-              <Route path="team" element={<TeamAdmin />} />
-              <Route path="domains" element={<DomainsAdmin />} />
-              <Route path="applications" element={<ApplicationsAdmin />} />
-              <Route path="announcements" element={<AnnouncementsAdmin />} />
-              <Route path="users" element={<UsersAdmin />} />
-              <Route path="settings" element={<SettingsAdmin />} />
-            </Route>
+              {/* Admin Routes with Protected Authentication Guard */}
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute>
+                    <AdminLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<Dashboard />} />
+                <Route
+                  path="events"
+                  element={
+                    <ProtectedRoute allowedRoles={['super_admin', 'event_manager']}>
+                      <EventsAdmin />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="projects"
+                  element={
+                    <ProtectedRoute allowedRoles={['super_admin', 'domain_lead']}>
+                      <ProjectsAdmin />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="team"
+                  element={
+                    <ProtectedRoute allowedRoles={['super_admin', 'social_media']}>
+                      <TeamAdmin />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="domains"
+                  element={
+                    <ProtectedRoute allowedRoles={['super_admin', 'domain_lead']}>
+                      <DomainsAdmin />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="applications"
+                  element={
+                    <ProtectedRoute allowedRoles={['super_admin', 'domain_lead']}>
+                      <ApplicationsAdmin />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="announcements"
+                  element={
+                    <ProtectedRoute allowedRoles={['super_admin', 'social_media']}>
+                      <AnnouncementsAdmin />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="users"
+                  element={
+                    <ProtectedRoute allowedRoles={['super_admin']}>
+                      <UsersAdmin />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="settings"
+                  element={
+                    <ProtectedRoute allowedRoles={['super_admin']}>
+                      <SettingsAdmin />
+                    </ProtectedRoute>
+                  }
+                />
+              </Route>
 
-            {/* Catch-all fallback for any unknown URL -> clean redirect to Home */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </ErrorBoundary>
-      </div>
-    </Router>
+              {/* Catch-all fallback for any unknown URL -> clean redirect to Home */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </ErrorBoundary>
+        </div>
+      </Router>
+    </AuthProvider>
   );
 }
 

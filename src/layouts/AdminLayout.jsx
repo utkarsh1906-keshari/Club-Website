@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -8,88 +8,103 @@ import {
   Layers, 
   ArrowLeft,
   ShieldCheck,
-  GraduationCap,
+  UserCheck,
   Crown,
-  LogOut
+  LogOut,
+  Radio
 } from 'lucide-react';
-import AdminLogin from '../admin/AdminLogin';
+import { useAuth } from '../context/AuthContext';
 import './AdminLayout.css';
 
 export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { adminProfile, signOut } = useAuth();
 
-  // Check for active authorized session in sessionStorage only
-  const [adminSession, setAdminSession] = useState(() => {
-    try {
-      // Clear any legacy persistent localStorage session
-      localStorage.removeItem('drc_admin_session');
-      
-      const saved = sessionStorage.getItem('drc_admin_session');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && parsed.authenticatedAt) {
-          return parsed;
-        }
-      }
-    } catch (e) {
-      console.error('Session retrieval error:', e);
-    }
-    return null;
-  });
-
-  const handleLogout = () => {
-    try {
-      sessionStorage.removeItem('drc_admin_session');
-      localStorage.removeItem('drc_admin_session');
-    } catch (e) {
-      console.error('Logout error:', e);
-    }
-    setAdminSession(null);
-  };
-
-  const handleExitToSite = () => {
-    handleLogout();
+  const handleLogout = async () => {
+    await signOut();
     navigate('/');
   };
 
-  // Whenever the admin portal layout is exited/unmounted, clear the session so password is required next time
-  useEffect(() => {
-    return () => {
-      try {
-        sessionStorage.removeItem('drc_admin_session');
-        localStorage.removeItem('drc_admin_session');
-      } catch (e) {
-        console.error('Session clear on exit error:', e);
-      }
-    };
-  }, []);
-
-  // If user is not an authenticated Faculty Advisor or Club Head, lock the portal and show login
-  if (!adminSession) {
-    return <AdminLogin onLoginSuccess={(session) => setAdminSession(session)} />;
-  }
+  const handleExitToSite = () => {
+    navigate('/');
+  };
 
   const allNavItems = [
-    { name: 'Dashboard', path: '/admin', icon: <LayoutDashboard size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'domain_lead', 'event_manager', 'social_media'] },
-    { name: 'Events', path: '/admin/events', icon: <Calendar size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'event_manager'] },
-    { name: 'Projects', path: '/admin/projects', icon: <FolderGit2 size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'domain_lead'] },
-    { name: 'Team Members', path: '/admin/team', icon: <Users size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'domain_lead'] },
-    { name: 'Domains', path: '/admin/domains', icon: <Layers size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'domain_lead'] },
-    { name: 'Applications', path: '/admin/applications', icon: <Users size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'domain_lead'] },
-    { name: 'Announcements', path: '/admin/announcements', icon: <ShieldCheck size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'social_media'] },
-    { name: 'Admin Users', path: '/admin/users', icon: <Crown size={18} />, roles: ['super_admin', 'faculty', 'club_head'] },
-    { name: 'Settings & SQL', path: '/admin/settings', icon: <ShieldCheck size={18} />, roles: ['super_admin', 'faculty', 'club_head'] },
+    { 
+      name: 'Dashboard', 
+      path: '/admin', 
+      icon: <LayoutDashboard size={18} />, 
+      roles: ['super_admin', 'domain_lead', 'event_manager', 'social_media'] 
+    },
+    { 
+      name: 'Events & Registrations', 
+      path: '/admin/events', 
+      icon: <Calendar size={18} />, 
+      roles: ['super_admin', 'event_manager'] 
+    },
+    { 
+      name: 'Projects', 
+      path: '/admin/projects', 
+      icon: <FolderGit2 size={18} />, 
+      roles: ['super_admin', 'domain_lead'] 
+    },
+    { 
+      name: 'Team Members', 
+      path: '/admin/team', 
+      icon: <Users size={18} />, 
+      roles: ['super_admin', 'social_media'] 
+    },
+    { 
+      name: 'Domains', 
+      path: '/admin/domains', 
+      icon: <Layers size={18} />, 
+      roles: ['super_admin', 'domain_lead'] 
+    },
+    { 
+      name: 'Applications', 
+      path: '/admin/applications', 
+      icon: <UserCheck size={18} />, 
+      roles: ['super_admin', 'domain_lead'] 
+    },
+    { 
+      name: 'Announcements', 
+      path: '/admin/announcements', 
+      icon: <Radio size={18} />, 
+      roles: ['super_admin', 'social_media'] 
+    },
+    { 
+      name: 'Admin Users', 
+      path: '/admin/users', 
+      icon: <Crown size={18} />, 
+      roles: ['super_admin'] 
+    },
+    { 
+      name: 'Settings & Cycles', 
+      path: '/admin/settings', 
+      icon: <ShieldCheck size={18} />, 
+      roles: ['super_admin'] 
+    },
   ];
 
-  const currentRole = adminSession?.role || 'faculty';
+  const currentRole = adminProfile?.role || 'super_admin';
   const navItems = allNavItems.filter(item => 
-    item.roles.includes(currentRole) || item.roles.includes('super_admin') && (currentRole === 'faculty' || currentRole === 'club_head')
+    currentRole === 'super_admin' || item.roles.includes(currentRole)
   );
 
   const isActive = (path) => {
     if (path === '/admin') return location.pathname === '/admin';
     return location.pathname.startsWith(path);
+  };
+
+  const getRoleDisplayName = (role) => {
+    switch (role) {
+      case 'super_admin': return 'Super Administrator';
+      case 'domain_lead': return 'Technical Domain Lead';
+      case 'event_manager': return 'Events Coordinator';
+      case 'social_media': return 'Media & Outreach Lead';
+      default: return 'Club Administrator';
+    }
   };
 
   return (
@@ -116,7 +131,7 @@ export default function AdminLayout() {
             </div>
             <div className="admin-brand-text">
               <span className="admin-badge">ADMIN CONSOLE</span>
-              <h2>Drone & Robotics</h2>
+              <h2>Drone &amp; Robotics</h2>
             </div>
           </div>
         </div>
@@ -137,14 +152,15 @@ export default function AdminLayout() {
         <div className="admin-sidebar-footer">
           <div className="admin-authenticated-user">
             <div className="auth-avatar">
-              {adminSession.role === 'faculty' ? <GraduationCap size={16} /> : <Crown size={16} />}
+              <Crown size={16} />
             </div>
             <div className="auth-user-info">
-              <span className="auth-user-name">{adminSession.name}</span>
-              <span className="auth-user-role">{adminSession.roleTitle} &bull; Active</span>
+              <span className="auth-user-name">{adminProfile?.name || 'Administrator'}</span>
+              <span className="auth-user-role">{getRoleDisplayName(adminProfile?.role)}</span>
             </div>
           </div>
           <button 
+            type="button"
             onClick={handleLogout} 
             className="sidebar-logout-btn" 
             title="Log Out of Admin Control Center"
@@ -169,9 +185,9 @@ export default function AdminLayout() {
           <div className="topbar-actions">
             <div className="topbar-profile-pill">
               <span className="role-pill-badge">
-                {adminSession.role === 'faculty' ? 'Faculty Advisor' : 'Club Head'}
+                {getRoleDisplayName(adminProfile?.role)}
               </span>
-              <span className="profile-name-text">{adminSession.name}</span>
+              <span className="profile-name-text">{adminProfile?.name || adminProfile?.email}</span>
             </div>
 
             <button 
@@ -184,13 +200,13 @@ export default function AdminLayout() {
             </button>
 
             <button 
-              type="button"
+              type="button" 
               onClick={handleLogout} 
               className="btn btn-danger-outline topbar-logout-action"
-              title="Exit Admin Portal"
+              title="Sign Out of Admin Portal"
             >
               <LogOut size={15} />
-              <span>Exit</span>
+              <span>Sign Out</span>
             </button>
           </div>
         </header>
