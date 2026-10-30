@@ -406,3 +406,4 @@ ON CONFLICT (email) DO UPDATE SET
     role = 'super_admin',
     is_active = true;
 */
+

@@ -114,3 +114,4 @@ Confirm that `auth_user_id` matches your Supabase Auth UID and `role` is `super_
    ```
 2. Vercel will trigger a production deployment.
 3. Test your live production URL at `/admin` to verify production authentication.
+

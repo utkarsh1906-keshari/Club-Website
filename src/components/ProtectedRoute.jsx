@@ -88,3 +88,4 @@ export default function ProtectedRoute({ allowedRoles, children }) {
 
   return children ? children : <Outlet />;
 }
+
