@@ -88,18 +88,6 @@ CREATE TABLE IF NOT EXISTS public.members (
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 6. GALLERY TABLE
-CREATE TABLE IF NOT EXISTS public.gallery (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    title TEXT NOT NULL,
-    category TEXT NOT NULL,
-    date_label TEXT,
-    description TEXT,
-    image_url TEXT NOT NULL,
-    badge TEXT,
-    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
 -- 7. RECRUITMENT CYCLES TABLE
 CREATE TABLE IF NOT EXISTS public.recruitment_cycles (
     id TEXT PRIMARY KEY,
@@ -151,18 +139,6 @@ CREATE TABLE IF NOT EXISTS public.announcements (
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 10. ACHIEVEMENTS TABLE
-CREATE TABLE IF NOT EXISTS public.achievements (
-    id TEXT PRIMARY KEY,
-    year TEXT NOT NULL,
-    title TEXT NOT NULL,
-    category TEXT NOT NULL,
-    description TEXT NOT NULL,
-    badge TEXT,
-    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
 -- 11. ADMIN USERS & ROLES TABLE
 CREATE TABLE IF NOT EXISTS public.admin_users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -184,22 +160,16 @@ ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.event_registrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.gallery ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.recruitment_cycles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.applications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.achievements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.admin_users ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Public Read Achievements" ON public.achievements FOR SELECT USING (true);
-CREATE POLICY "Admin Full Access Achievements" ON public.achievements FOR ALL USING (auth.role() = 'authenticated');
 
 -- Anonymous public read policies
 CREATE POLICY "Public Read Domains" ON public.domains FOR SELECT USING (true);
 CREATE POLICY "Public Read Projects" ON public.projects FOR SELECT USING (true);
 CREATE POLICY "Public Read Events" ON public.events FOR SELECT USING (true);
 CREATE POLICY "Public Read Members" ON public.members FOR SELECT USING (true);
-CREATE POLICY "Public Read Gallery" ON public.gallery FOR SELECT USING (true);
 CREATE POLICY "Public Read Recruitment Cycles" ON public.recruitment_cycles FOR SELECT USING (true);
 CREATE POLICY "Public Read Active Announcements" ON public.announcements FOR SELECT USING (is_active = true);
 
@@ -213,7 +183,6 @@ CREATE POLICY "Admin Full Access Projects" ON public.projects FOR ALL USING (aut
 CREATE POLICY "Admin Full Access Events" ON public.events FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Admin Full Access Registrations" ON public.event_registrations FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Admin Full Access Members" ON public.members FOR ALL USING (auth.role() = 'authenticated');
-CREATE POLICY "Admin Full Access Gallery" ON public.gallery FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Admin Full Access Recruitment Cycles" ON public.recruitment_cycles FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Admin Full Access Applications" ON public.applications FOR ALL USING (auth.role() = 'authenticated');
 CREATE POLICY "Admin Full Access Announcements" ON public.announcements FOR ALL USING (auth.role() = 'authenticated');

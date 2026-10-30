@@ -42,8 +42,6 @@ function App() {
               <Route path="projects" element={<Projects />} />
               <Route path="events" element={<Events />} />
               <Route path="team" element={<Team />} />
-              <Route path="gallery" element={<Navigate to="/" replace />} />
-              <Route path="achievements" element={<Navigate to="/" replace />} />
               <Route path="join" element={<JoinUs />} />
               <Route path="contact" element={<Contact />} />
             </Route>
@@ -51,12 +49,10 @@ function App() {
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<Dashboard />} />
-              <Route path="achievements" element={<Navigate to="/admin" replace />} />
               <Route path="events" element={<EventsAdmin />} />
               <Route path="projects" element={<ProjectsAdmin />} />
               <Route path="team" element={<TeamAdmin />} />
               <Route path="domains" element={<DomainsAdmin />} />
-              <Route path="gallery" element={<Navigate to="/admin" replace />} />
               <Route path="applications" element={<ApplicationsAdmin />} />
               <Route path="announcements" element={<AnnouncementsAdmin />} />
               <Route path="users" element={<UsersAdmin />} />

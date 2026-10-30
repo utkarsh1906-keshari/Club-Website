@@ -36,7 +36,7 @@ export default function SettingsAdmin() {
 
   const handleResetSeedData = () => {
     if (window.confirm('Reset all local data back to the default ABES Drone & Robotics Club state? This clears any demo modifications saved in this browser.')) {
-      const keys = ['domains', 'projects', 'events', 'event_registrations', 'members', 'gallery', 'applications', 'announcements'];
+      const keys = ['domains', 'projects', 'events', 'event_registrations', 'members', 'applications', 'announcements'];
       keys.forEach(k => localStorage.removeItem('drc_' + k));
       setResetSuccess(true);
       setTimeout(() => {
