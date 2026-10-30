@@ -12,8 +12,6 @@ import {
   FolderGit2,
   Calendar,
   Users,
-  Image as ImageIcon,
-  Trophy,
   UserPlus,
   ArrowRight,
   Shield
@@ -51,8 +49,6 @@ export default function Navbar() {
     { name: 'Projects', path: '/projects', icon: <FolderGit2 size={18} /> },
     { name: 'Events', path: '/events', icon: <Calendar size={18} /> },
     { name: 'Team', path: '/team', icon: <Users size={18} /> },
-    { name: 'Gallery', path: '/gallery', icon: <ImageIcon size={18} /> },
-    { name: 'Achievements', path: '/achievements', icon: <Trophy size={18} /> },
     { name: 'Join Us', path: '/join', icon: <UserPlus size={18} /> },
   ];
 
@@ -70,8 +66,6 @@ export default function Navbar() {
       navigate('/team');
     } else if (q.includes('domain') || q.includes('ai') || q.includes('vlsi')) {
       navigate('/domains');
-    } else if (q.includes('achieve') || q.includes('winner') || q.includes('award')) {
-      navigate('/achievements');
     } else if (q.includes('join') || q.includes('apply') || q.includes('recruit')) {
       navigate('/join');
     } else {

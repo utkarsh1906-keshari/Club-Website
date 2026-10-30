@@ -58,8 +58,6 @@ export default function Footer() {
               <li><Link to="/domains">Domains &amp; Projects</Link></li>
               <li><Link to="/events">Events & Workshops</Link></li>
               <li><Link to="/team">Club Leadership & Members</Link></li>
-              <li><Link to="/gallery">Media Gallery</Link></li>
-              <li><Link to="/achievements">Achievements</Link></li>
               <li><Link to="/join" className="footer-highlight-link">Recruitment Form <ArrowUpRight size={13} /></Link></li>
             </ul>
           </div>

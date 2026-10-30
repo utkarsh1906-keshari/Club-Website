@@ -6,8 +6,6 @@ import {
   FolderGit2, 
   Users, 
   Layers, 
-  Image as ImageIcon, 
-  Trophy,
   ArrowLeft,
   ShieldCheck,
   GraduationCap,
@@ -74,12 +72,10 @@ export default function AdminLayout() {
 
   const allNavItems = [
     { name: 'Dashboard', path: '/admin', icon: <LayoutDashboard size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'domain_lead', 'event_manager', 'social_media'] },
-    { name: 'Achievements', path: '/admin/achievements', icon: <Trophy size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'domain_lead', 'event_manager', 'social_media'] },
     { name: 'Events', path: '/admin/events', icon: <Calendar size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'event_manager'] },
     { name: 'Projects', path: '/admin/projects', icon: <FolderGit2 size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'domain_lead'] },
     { name: 'Team Members', path: '/admin/team', icon: <Users size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'domain_lead'] },
     { name: 'Domains', path: '/admin/domains', icon: <Layers size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'domain_lead'] },
-    { name: 'Gallery Media', path: '/admin/gallery', icon: <ImageIcon size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'social_media'] },
     { name: 'Applications', path: '/admin/applications', icon: <Users size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'domain_lead'] },
     { name: 'Announcements', path: '/admin/announcements', icon: <ShieldCheck size={18} />, roles: ['super_admin', 'faculty', 'club_head', 'social_media'] },
     { name: 'Admin Users', path: '/admin/users', icon: <Crown size={18} />, roles: ['super_admin', 'faculty', 'club_head'] },

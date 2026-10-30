@@ -13,19 +13,15 @@ import Domains from './pages/Domains';
 import Projects from './pages/Projects';
 import Events from './pages/Events';
 import Team from './pages/Team';
-import Gallery from './pages/Gallery';
-import Achievements from './pages/Achievements';
 import JoinUs from './pages/JoinUs';
 import Contact from './pages/Contact';
 
 // Admin Pages
 import Dashboard from './admin/Dashboard';
-import AchievementsAdmin from './admin/AchievementsAdmin';
 import EventsAdmin from './admin/EventsAdmin';
 import ProjectsAdmin from './admin/ProjectsAdmin';
 import TeamAdmin from './admin/TeamAdmin';
 import DomainsAdmin from './admin/DomainsAdmin';
-import GalleryAdmin from './admin/GalleryAdmin';
 import ApplicationsAdmin from './admin/ApplicationsAdmin';
 import AnnouncementsAdmin from './admin/AnnouncementsAdmin';
 import UsersAdmin from './admin/UsersAdmin';
@@ -46,8 +42,8 @@ function App() {
               <Route path="projects" element={<Projects />} />
               <Route path="events" element={<Events />} />
               <Route path="team" element={<Team />} />
-              <Route path="gallery" element={<Gallery />} />
-              <Route path="achievements" element={<Achievements />} />
+              <Route path="gallery" element={<Navigate to="/" replace />} />
+              <Route path="achievements" element={<Navigate to="/" replace />} />
               <Route path="join" element={<JoinUs />} />
               <Route path="contact" element={<Contact />} />
             </Route>
@@ -55,12 +51,12 @@ function App() {
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<Dashboard />} />
-              <Route path="achievements" element={<AchievementsAdmin />} />
+              <Route path="achievements" element={<Navigate to="/admin" replace />} />
               <Route path="events" element={<EventsAdmin />} />
               <Route path="projects" element={<ProjectsAdmin />} />
               <Route path="team" element={<TeamAdmin />} />
               <Route path="domains" element={<DomainsAdmin />} />
-              <Route path="gallery" element={<GalleryAdmin />} />
+              <Route path="gallery" element={<Navigate to="/admin" replace />} />
               <Route path="applications" element={<ApplicationsAdmin />} />
               <Route path="announcements" element={<AnnouncementsAdmin />} />
               <Route path="users" element={<UsersAdmin />} />

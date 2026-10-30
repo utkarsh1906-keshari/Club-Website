@@ -193,7 +193,7 @@ export default function UsersAdmin() {
           <div><strong>Super Admin:</strong> Full database read/write access across all modules, settings &amp; users.</div>
           <div><strong>Domain Lead:</strong> Scoped exclusively to managing projects &amp; roster in their assigned technical domain.</div>
           <div><strong>Event Manager:</strong> Authorized to create events, manage schedules &amp; view participant registrations.</div>
-          <div><strong>Social Media:</strong> Authorized to publish announcements, banners, and media gallery uploads.</div>
+          <div><strong>Social Media:</strong> Authorized to publish announcements and club notification banners.</div>
         </div>
       </div>
 
@@ -306,7 +306,7 @@ export default function UsersAdmin() {
                   <option value="super_admin">Super Admin (Full Database Access)</option>
                   <option value="domain_lead">Domain Lead (Scoped to Technical Vertical)</option>
                   <option value="event_manager">Event Manager (Events &amp; Registrations)</option>
-                  <option value="social_media">Social Media Team (Gallery &amp; Notices)</option>
+                  <option value="social_media">Social Media Team (Announcements &amp; Notices)</option>
                 </select>
               </div>
 
