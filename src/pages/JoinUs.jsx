@@ -33,7 +33,7 @@ export default function JoinUs() {
 
   const [customAnswers, setCustomAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
-  const [isUpdateSubmission, setIsUpdateSubmission] = useState(false);
+  const [isUpdateSubmission] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isDuplicate, setIsDuplicate] = useState(false);
@@ -92,31 +92,52 @@ export default function JoinUs() {
     setErrorMsg('');
     setIsDuplicate(false);
 
-    try {
-      const cleanEmail = (formData.email || '').trim().toLowerCase();
+    if (isClosed) {
+      setErrorMsg('Applications/registrations are currently closed');
+      setLoading(false);
+      return;
+    }
 
-      if (!cleanEmail) {
+    try {
+      const cleanName = (formData.name || '').trim();
+      const cleanEmail = (formData.email || '').trim().toLowerCase();
+      const cleanStudentId = (formData.studentId || '').trim();
+      const cleanReason = (formData.reason || '').trim();
+
+      // Client-side limits matching Phase 1(d) SQL CHECK constraints
+      if (cleanName.length < 2 || cleanName.length > 100) {
+        setErrorMsg('Full name must be between 2 and 100 characters.');
+        setLoading(false);
+        return;
+      }
+      if (!cleanEmail || !cleanEmail.includes('@')) {
         setErrorMsg('Please enter a valid email address.');
         setLoading(false);
         return;
       }
+      if (cleanStudentId.length < 2 || cleanStudentId.length > 50) {
+        setErrorMsg('Student Roll No / ID must be between 2 and 50 characters.');
+        setLoading(false);
+        return;
+      }
+      if (cleanReason.length < 5 || cleanReason.length > 5000) {
+        setErrorMsg('Statement of interest / reason must be between 5 and 5000 characters.');
+        setLoading(false);
+        return;
+      }
 
-      const res = await applicationsService.create({
-        name: formData.name || 'Candidate Applicant',
+      await applicationsService.create({
+        name: cleanName,
         email: cleanEmail,
-        student_id: formData.studentId || 'N/A',
+        student_id: cleanStudentId,
         branch: formData.branch || 'N/A',
         year: formData.year || '1st Year',
         domain: formData.domain || 'AI/ML',
         role: formData.role || 'Technical',
-        reason: formData.reason || '',
+        reason: cleanReason,
         portfolio_url: formData.portfolio || '',
         custom_answers: customAnswers
       });
-
-      if (res?.isUpdated) {
-        setIsUpdateSubmission(true);
-      }
 
       if (cycleConfig?.id) {
         localStorage.setItem(`drc_applied_${cycleConfig.id}`, cleanEmail);
@@ -126,8 +147,15 @@ export default function JoinUs() {
       setSubmitted(true);
     } catch (err) {
       console.error('Application submission error:', err);
-      const msg = err.message || 'Failed to submit application. Please check your details and try again.';
-      setErrorMsg(msg);
+      const msg = err.message || '';
+      if (msg.includes('23505') || msg.toLowerCase().includes('already applied')) {
+        setErrorMsg('You have already applied/registered');
+        setIsDuplicate(true);
+      } else if (msg.includes('42501') || msg.toLowerCase().includes('closed')) {
+        setErrorMsg('Applications/registrations are currently closed');
+      } else {
+        setErrorMsg(msg || 'Failed to submit application. Please check your details and try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -144,7 +172,10 @@ export default function JoinUs() {
     );
   }
 
-  const isClosed = !cycleConfig?.is_active;
+  const isPastDeadline = Boolean(
+    cycleConfig?.deadline && new Date(cycleConfig.deadline).setHours(23, 59, 59, 999) < Date.now()
+  );
+  const isClosed = !cycleConfig?.is_active || isPastDeadline;
   const activeQuestions = questions.filter(q => q.active !== false);
 
   // Group active questions: grid-compatible vs full-width

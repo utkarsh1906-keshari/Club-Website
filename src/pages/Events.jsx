@@ -13,7 +13,8 @@ import {
   Building,
   Users,
   Sparkles,
-  Ticket
+  Ticket,
+  AlertCircle
 } from 'lucide-react';
 import { eventsService, eventRegistrationsService } from '../lib/dataService';
 import './Events.css';
@@ -42,6 +43,7 @@ export default function Events() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [registrationId, setRegistrationId] = useState('');
+  const [regError, setRegError] = useState('');
 
   useEffect(() => {
     async function loadEvents() {
@@ -85,6 +87,7 @@ export default function Events() {
     setSelectedEvent(evt);
     setIsSubmitted(false);
     setIsSubmitting(false);
+    setRegError('');
     const cat = (evt?.category || '').toLowerCase();
     setFormData({
       fullName: '',
@@ -105,31 +108,74 @@ export default function Events() {
     setSelectedEvent(null);
     setIsSubmitted(false);
     setIsSubmitting(false);
+    setRegError('');
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    if (regError) setRegError('');
   };
 
   const handleSubmitRegistration = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setRegError('');
+
+    const isClosed = selectedEvent?.is_past || selectedEvent?.registration_open === false;
+    if (isClosed) {
+      setRegError('Applications/registrations are currently closed');
+      setIsSubmitting(false);
+      return;
+    }
+
+    const cleanFullName = (formData.fullName || '').trim();
+    const cleanEmail = (formData.email || '').trim().toLowerCase();
+    const cleanPhone = (formData.phone || '').trim();
+    const cleanRollNo = (formData.rollNo || '').trim();
+    const teamSize = parseInt(formData.teamSize || '1', 10);
+
+    // Client-side limits matching Phase 1(d) SQL CHECK constraints
+    if (cleanFullName.length < 2 || cleanFullName.length > 100) {
+      setRegError('Full name must be between 2 and 100 characters.');
+      setIsSubmitting(false);
+      return;
+    }
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setRegError('A valid email address is required.');
+      setIsSubmitting(false);
+      return;
+    }
+    if (cleanPhone.length < 7 || cleanPhone.length > 25) {
+      setRegError('Phone number must be between 7 and 25 characters.');
+      setIsSubmitting(false);
+      return;
+    }
+    if (cleanRollNo.length < 2 || cleanRollNo.length > 50) {
+      setRegError('Student roll number must be between 2 and 50 characters.');
+      setIsSubmitting(false);
+      return;
+    }
+    if (formData.participationType === 'Team' && (isNaN(teamSize) || teamSize < 1 || teamSize > 20)) {
+      setRegError('Team size must be between 1 and 20.');
+      setIsSubmitting(false);
+      return;
+    }
 
     const refCode = 'ABES-EVT-' + Math.floor(100000 + Math.random() * 900000);
 
     try {
       await eventRegistrationsService.create({
         event_id: selectedEvent.id,
-        full_name: formData.fullName,
-        email: formData.email,
-        phone: formData.phone,
-        roll_no: formData.rollNo,
+        full_name: cleanFullName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        roll_no: cleanRollNo,
         branch: formData.branch,
         year: formData.year,
         participation_type: formData.participationType,
         team_name: formData.teamName,
-        team_size: parseInt(formData.teamSize || '1', 10),
+        team_size: teamSize,
         team_members: formData.teamMembers,
         notes: formData.notes
       });
@@ -137,6 +183,14 @@ export default function Events() {
       setIsSubmitted(true);
     } catch (err) {
       console.error('Registration submit error:', err);
+      const msg = err.message || '';
+      if (msg.includes('23505') || msg.toLowerCase().includes('already applied') || msg.toLowerCase().includes('already registered')) {
+        setRegError('You have already applied/registered');
+      } else if (msg.includes('42501') || msg.toLowerCase().includes('closed')) {
+        setRegError('Applications/registrations are currently closed');
+      } else {
+        setRegError(msg || 'Failed to complete registration. Please try again.');
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -232,14 +286,25 @@ export default function Events() {
                       </div>
 
                       <div className="event-card-footer">
-                        <button 
-                          type="button" 
-                          className="btn btn-primary btn-sm event-register-trigger"
-                          onClick={() => handleOpenRegister(evt)}
-                        >
-                          <span>Register for Event</span>
-                          <ArrowRight size={14} />
-                        </button>
+                        {evt.is_past || evt.registration_open === false ? (
+                          <button 
+                            type="button" 
+                            className="btn btn-secondary btn-sm"
+                            style={{ opacity: 0.65, cursor: 'not-allowed' }}
+                            disabled
+                          >
+                            <span>Registrations Closed</span>
+                          </button>
+                        ) : (
+                          <button 
+                            type="button" 
+                            className="btn btn-primary btn-sm event-register-trigger"
+                            onClick={() => handleOpenRegister(evt)}
+                          >
+                            <span>Register for Event</span>
+                            <ArrowRight size={14} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -283,6 +348,42 @@ export default function Events() {
             <div className="event-modal-body">
               {!isSubmitted ? (
                 <form onSubmit={handleSubmitRegistration} className="event-registration-form">
+                  {regError && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.6rem',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '8px',
+                      background: 'rgba(239, 68, 68, 0.12)',
+                      border: '1px solid rgba(239, 68, 68, 0.3)',
+                      color: '#f87171',
+                      fontSize: '0.875rem',
+                      marginBottom: '1rem'
+                    }} role="alert">
+                      <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                      <span>{regError}</span>
+                    </div>
+                  )}
+
+                  {(selectedEvent.is_past || selectedEvent.registration_open === false) && (
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.6rem',
+                      padding: '0.75rem 1rem',
+                      borderRadius: '8px',
+                      background: 'rgba(245, 158, 11, 0.12)',
+                      border: '1px solid rgba(245, 158, 11, 0.3)',
+                      color: '#fbbf24',
+                      fontSize: '0.875rem',
+                      marginBottom: '1rem'
+                    }} role="alert">
+                      <AlertCircle size={16} style={{ flexShrink: 0 }} />
+                      <span>Registrations for this event are currently closed.</span>
+                    </div>
+                  )}
+
                   <div className="form-intro-note">
                     <Sparkles size={16} />
                     <span>Enter your student details below to reserve your entry pass for this session.</span>
@@ -482,7 +583,7 @@ export default function Events() {
                     <button 
                       type="submit" 
                       className="btn btn-primary modal-submit-btn" 
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || selectedEvent.is_past || selectedEvent.registration_open === false}
                     >
                       {isSubmitting ? (
                         <span>Processing Registration...</span>

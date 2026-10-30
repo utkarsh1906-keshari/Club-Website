@@ -863,23 +863,64 @@ export const eventRegistrationsService = {
   },
 
   async create(registration) {
+    const cleanName = (registration.full_name || '').trim();
+    const cleanEmail = (registration.email || '').trim().toLowerCase();
+    const cleanPhone = (registration.phone || '').trim();
+    const cleanRollNo = (registration.roll_no || '').trim();
+    const teamSize = parseInt(registration.team_size || '1', 10);
+
+    // Client-side validation matching Phase 1(d) SQL CHECK constraints
+    if (cleanName.length < 2 || cleanName.length > 100) {
+      throw new Error('Full name must be between 2 and 100 characters.');
+    }
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      throw new Error('A valid email address is required.');
+    }
+    if (cleanPhone.length < 7 || cleanPhone.length > 25) {
+      throw new Error('Phone number must be between 7 and 25 characters.');
+    }
+    if (cleanRollNo.length < 2 || cleanRollNo.length > 50) {
+      throw new Error('Roll number must be between 2 and 50 characters.');
+    }
+    if (isNaN(teamSize) || teamSize < 1 || teamSize > 20) {
+      throw new Error('Team size must be between 1 and 20.');
+    }
+
+    const payload = {
+      event_id: registration.event_id,
+      full_name: cleanName,
+      email: cleanEmail,
+      phone: cleanPhone,
+      roll_no: cleanRollNo,
+      branch: registration.branch || '',
+      year: registration.year || '',
+      participation_type: registration.participation_type || 'Solo',
+      team_name: registration.team_name || '',
+      team_size: teamSize,
+      team_members: registration.team_members || '',
+      notes: registration.notes || ''
+    };
+
     const newReg = {
       id: 'reg-' + Date.now(),
       created_at: new Date().toISOString(),
-      ...registration
+      ...payload
     };
+
     if (supabase) {
-      try {
-        const { data, error } = await supabase.from('event_registrations').insert([registration]).select().single();
-        if (!error && data) {
-          const list = [data, ...getLocal('event_registrations', [])];
-          setLocal('event_registrations', list);
-          return data;
+      // Do NOT chain .select() after .insert() - anonymous users do not have SELECT permission
+      const { error } = await supabase.from('event_registrations').insert([payload]);
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error('You have already applied/registered');
         }
-      } catch (err) {
-        console.warn('Supabase registration insert error:', err);
+        if (error.code === '42501') {
+          throw new Error('Applications/registrations are currently closed');
+        }
+        throw new Error(error.message || 'Failed to complete registration');
       }
     }
+
     const list = [newReg, ...getLocal('event_registrations', [])];
     setLocal('event_registrations', list);
     return newReg;
@@ -1191,86 +1232,70 @@ export const applicationsService = {
   async create(app) {
     const cycle = await recruitmentService.getCycleConfig();
 
-    // 1. Check if recruitment cycle is active
-    if (!cycle.is_active) {
-      throw new Error('Recruitment is currently closed. New applications are not being accepted at this time.');
+    // 1. Check if recruitment cycle is active and not past deadline
+    const isPastDeadline = Boolean(
+      cycle?.deadline && new Date(cycle.deadline).setHours(23, 59, 59, 999) < Date.now()
+    );
+    if (!cycle?.is_active || isPastDeadline) {
+      throw new Error('Applications/registrations are currently closed');
     }
 
+    const cleanName = (app.name || '').trim();
     const cleanEmail = (app.email || '').trim().toLowerCase();
-    if (!cleanEmail) {
+    const cleanStudentId = (app.student_id || '').trim();
+    const cleanReason = (app.reason || '').trim();
+
+    // Client-side limits matching Phase 1(d) SQL CHECK constraints
+    if (cleanName.length < 2 || cleanName.length > 100) {
+      throw new Error('Full name must be between 2 and 100 characters.');
+    }
+    if (!cleanEmail || !cleanEmail.includes('@')) {
       throw new Error('A valid email address is required.');
     }
-
-    // 2. Check if an application already exists for this email in current cycle
-    const existingList = await this.getAll(cycle.id);
-    const existingApp = existingList.find(a => (a.email || '').trim().toLowerCase() === cleanEmail);
-
-    if (existingApp) {
-      // Allow re-submission / update: update existing application with candidate's latest details
-      const updatedFields = {
-        name: app.name || existingApp.name,
-        student_id: app.student_id || existingApp.student_id,
-        branch: app.branch || existingApp.branch,
-        year: app.year || existingApp.year,
-        domain: app.domain || existingApp.domain,
-        role: app.role || existingApp.role,
-        reason: app.reason || existingApp.reason,
-        portfolio_url: app.portfolio_url || existingApp.portfolio_url,
-        custom_answers: app.custom_answers || existingApp.custom_answers,
-        updated_at: new Date().toISOString()
-      };
-
-      if (supabase) {
-        try {
-          const { data, error } = await supabase
-            .from('applications')
-            .update(updatedFields)
-            .eq('id', existingApp.id)
-            .select()
-            .single();
-          if (!error && data) {
-            const list = getLocal('applications', SEED_APPLICATIONS).map(a =>
-              a.id === existingApp.id ? data : a
-            );
-            setLocal('applications', list);
-            return { ...data, isUpdated: true };
-          }
-        } catch (err) {
-          console.warn('Supabase application update error:', err);
-        }
-      }
-
-      const merged = { ...existingApp, ...updatedFields, is_updated: true };
-      const list = getLocal('applications', SEED_APPLICATIONS).map(a =>
-        a.id === existingApp.id ? merged : a
-      );
-      setLocal('applications', list);
-      return { ...merged, isUpdated: true };
+    if (cleanStudentId.length < 2 || cleanStudentId.length > 50) {
+      throw new Error('Student ID / Roll No must be between 2 and 50 characters.');
+    }
+    if (cleanReason.length < 5 || cleanReason.length > 5000) {
+      throw new Error('Statement of interest / reason must be between 5 and 5000 characters.');
     }
 
-    // 3. Fresh application creation
+    // Public payload: explicitly do NOT send status or admin_notes
+    const payload = {
+      cycle_id: cycle.id || 'cycle-2026-2027',
+      name: cleanName,
+      email: cleanEmail,
+      student_id: cleanStudentId,
+      branch: app.branch || 'N/A',
+      year: app.year || '1st Year',
+      domain: app.domain || 'AI/ML',
+      role: app.role || 'Technical',
+      reason: cleanReason,
+      portfolio_url: app.portfolio_url || '',
+      custom_answers: app.custom_answers || {}
+    };
+
     const newApp = {
       id: 'app-' + Date.now(),
       status: 'New',
-      cycle_id: cycle.id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-      ...app,
-      email: cleanEmail
+      ...payload
     };
 
     if (supabase) {
-      try {
-        const { data, error } = await supabase.from('applications').insert([newApp]).select().single();
-        if (!error && data) {
-          const list = [data, ...getLocal('applications', SEED_APPLICATIONS)];
-          setLocal('applications', list);
-          return data;
+      // Do NOT chain .select() after .insert() - anonymous users do not have SELECT permission
+      const { error } = await supabase.from('applications').insert([payload]);
+      if (error) {
+        if (error.code === '23505') {
+          throw new Error('You have already applied/registered');
         }
-      } catch (err) {
-        console.warn('Supabase application submit error:', err);
+        if (error.code === '42501') {
+          throw new Error('Applications/registrations are currently closed');
+        }
+        throw new Error(error.message || 'Failed to submit application');
       }
     }
+
     const list = [newApp, ...getLocal('applications', SEED_APPLICATIONS)];
     setLocal('applications', list);
     return newApp;
