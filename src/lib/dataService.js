@@ -1028,63 +1028,72 @@ export const eventRegistrationsService = {
     const cleanEmail = (registration.email || '').trim().toLowerCase();
     const cleanPhone = (registration.phone || '').trim();
     const cleanRollNo = (registration.roll_no || '').trim();
-    const teamSize = parseInt(registration.team_size || '1', 10);
+    const isTeam = (registration.participation_type || '').toLowerCase() === 'team';
+    const teamSize = isTeam ? parseInt(registration.team_size || '1', 10) : 1;
 
-    // Client-side validation matching Phase 1(d) SQL CHECK constraints
+    // Client-side validation:
+    // valid email, full_name 2-100, phone 7-20 (+, spaces, digits), roll_no 3-30, team_size 1-20
     if (cleanName.length < 2 || cleanName.length > 100) {
       throw new Error('Full name must be between 2 and 100 characters.');
     }
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      throw new Error('A valid email address is required.');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      throw new Error('A valid email address with a domain is required.');
     }
-    if (cleanPhone.length < 7 || cleanPhone.length > 25) {
-      throw new Error('Phone number must be between 7 and 25 characters.');
+    const phoneRegex = /^[+]?[\d\s-]{7,20}$/;
+    if (!phoneRegex.test(cleanPhone)) {
+      throw new Error('Phone number must be between 7 and 20 digits (e.g. +91 9876543210).');
     }
-    if (cleanRollNo.length < 2 || cleanRollNo.length > 50) {
-      throw new Error('Roll number must be between 2 and 50 characters.');
+    if (cleanRollNo.length < 3 || cleanRollNo.length > 30) {
+      throw new Error('Roll number must be between 3 and 30 characters.');
     }
-    if (isNaN(teamSize) || teamSize < 1 || teamSize > 20) {
-      throw new Error('Team size must be between 1 and 20.');
+    if (isTeam && (isNaN(teamSize) || teamSize < 1 || teamSize > 20)) {
+      throw new Error('Team size must be a number between 1 and 20.');
     }
 
+    // Public payload: Send only canonical columns, never send id or created_at
     const payload = {
       event_id: registration.event_id,
       full_name: cleanName,
       email: cleanEmail,
       phone: cleanPhone,
       roll_no: cleanRollNo,
-      branch: registration.branch || '',
-      year: registration.year || '',
+      branch: cleanNull(registration.branch),
+      year: cleanNull(registration.year),
       participation_type: registration.participation_type || 'Solo',
-      team_name: registration.team_name || '',
+      team_name: isTeam ? cleanNull(registration.team_name) : null,
       team_size: teamSize,
-      team_members: registration.team_members || '',
-      notes: registration.notes || ''
-    };
-
-    const newReg = {
-      id: 'reg-' + Date.now(),
-      created_at: new Date().toISOString(),
-      ...payload
+      team_members: isTeam ? cleanNull(registration.team_members) : null,
+      notes: cleanNull(registration.notes)
     };
 
     if (supabase) {
       // Do NOT chain .select() after .insert() - anonymous users do not have SELECT permission
       const { error } = await supabase.from('event_registrations').insert([payload]);
       if (error) {
-        if (error.code === '23505') {
-          throw new Error('You have already applied/registered');
+        if (error.code === '23505' || error.message?.includes('23505')) {
+          throw new Error('You are already registered for this event.');
         }
-        if (error.code === '42501') {
-          throw new Error('Applications/registrations are currently closed');
+        if (error.code === '42501' || error.message?.includes('42501') || error.message?.toLowerCase().includes('closed')) {
+          throw new Error('Registration for this event is currently closed.');
         }
         throw new Error(error.message || 'Failed to complete registration');
       }
+      return { success: true, ...payload };
     }
 
-    const list = [newReg, ...getLocal('event_registrations', [])];
-    setLocal('event_registrations', list);
-    return newReg;
+    if (import.meta.env.DEV) {
+      const newReg = {
+        id: 'reg-' + Date.now(),
+        created_at: new Date().toISOString(),
+        ...payload
+      };
+      const list = [newReg, ...getLocal('event_registrations', [])];
+      setLocal('event_registrations', list);
+      return newReg;
+    }
+
+    throw new Error('Supabase client is not available');
   }
 };
 
@@ -1607,12 +1616,18 @@ export const applicationsService = {
   async create(app) {
     const cycle = await recruitmentService.getCycleConfig();
 
-    // 1. Check if recruitment cycle is active and not past deadline
-    const isPastDeadline = Boolean(
-      cycle?.deadline && new Date(cycle.deadline).setHours(23, 59, 59, 999) < Date.now()
-    );
+    // Check if recruitment cycle is active and not past deadline in India time
+    const getIstDeadlineTimestamp = (deadlineStr) => {
+      if (!deadlineStr) return null;
+      const dateOnly = String(deadlineStr).split('T')[0].trim();
+      if (!dateOnly || !/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return null;
+      const parsed = new Date(`${dateOnly}T23:59:59.999+05:30`).getTime();
+      return isNaN(parsed) ? null : parsed;
+    };
+    const deadlineTs = getIstDeadlineTimestamp(cycle?.deadline);
+    const isPastDeadline = Boolean(deadlineTs && Date.now() > deadlineTs);
     if (!cycle?.is_active || isPastDeadline) {
-      throw new Error('Applications/registrations are currently closed');
+      throw new Error('Applications are currently closed.');
     }
 
     const cleanName = (app.name || '').trim();
@@ -1620,60 +1635,66 @@ export const applicationsService = {
     const cleanStudentId = (app.student_id || '').trim();
     const cleanReason = (app.reason || '').trim();
 
-    // Client-side limits matching Phase 1(d) SQL CHECK constraints
+    // Client-side limits
     if (cleanName.length < 2 || cleanName.length > 100) {
       throw new Error('Full name must be between 2 and 100 characters.');
     }
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      throw new Error('A valid email address is required.');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      throw new Error('A valid email address with domain is required.');
     }
-    if (cleanStudentId.length < 2 || cleanStudentId.length > 50) {
-      throw new Error('Student ID / Roll No must be between 2 and 50 characters.');
+    if (cleanStudentId.length < 3 || cleanStudentId.length > 30) {
+      throw new Error('Student ID / Roll No must be between 3 and 30 characters.');
     }
-    if (cleanReason.length < 5 || cleanReason.length > 5000) {
-      throw new Error('Statement of interest / reason must be between 5 and 5000 characters.');
+    if (cleanReason.length < 10 || cleanReason.length > 2000) {
+      throw new Error('Statement of interest / reason must be between 10 and 2000 characters.');
     }
 
-    // Public payload: explicitly do NOT send status or admin_notes
+    // Public payload: explicitly do NOT send id, created_at, status or admin_notes
+    // Send only: name, email, student_id, branch, year, domain, role, reason, portfolio_url, custom_answers, cycle_id
     const payload = {
-      cycle_id: cycle.id || 'cycle-2026-2027',
+      cycle_id: cycle?.id || 'cycle-2026-2027',
       name: cleanName,
       email: cleanEmail,
       student_id: cleanStudentId,
-      branch: app.branch || 'N/A',
-      year: app.year || '1st Year',
-      domain: app.domain || 'AI/ML',
-      role: app.role || 'Technical',
+      branch: cleanNull(app.branch) || 'N/A',
+      year: cleanNull(app.year) || '1st Year',
+      domain: cleanNull(app.domain) || 'AI/ML',
+      role: cleanNull(app.role) || 'Technical',
       reason: cleanReason,
-      portfolio_url: app.portfolio_url || '',
+      portfolio_url: cleanNull(app.portfolio_url),
       custom_answers: app.custom_answers || {}
-    };
-
-    const newApp = {
-      id: 'app-' + Date.now(),
-      status: 'New',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      ...payload
     };
 
     if (supabase) {
       // Do NOT chain .select() after .insert() - anonymous users do not have SELECT permission
       const { error } = await supabase.from('applications').insert([payload]);
       if (error) {
-        if (error.code === '23505') {
-          throw new Error('You have already applied/registered');
+        if (error.code === '23505' || error.message?.includes('23505') || error.message?.toLowerCase().includes('already applied')) {
+          throw new Error('You have already applied for this recruitment cycle.');
         }
-        if (error.code === '42501') {
-          throw new Error('Applications/registrations are currently closed');
+        if (error.code === '42501' || error.message?.includes('42501') || error.message?.toLowerCase().includes('closed')) {
+          throw new Error('Applications are currently closed.');
         }
         throw new Error(error.message || 'Failed to submit application');
       }
+      return { success: true, ...payload };
     }
 
-    const list = [newApp, ...getLocal('applications', SEED_APPLICATIONS)];
-    setLocal('applications', list);
-    return newApp;
+    if (import.meta.env.DEV) {
+      const newApp = {
+        id: 'app-' + Date.now(),
+        status: 'New',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        ...payload
+      };
+      const list = [newApp, ...getLocal('applications', SEED_APPLICATIONS)];
+      setLocal('applications', list);
+      return newApp;
+    }
+
+    throw new Error('Supabase client is not available');
   },
 
   async updateStatus(id, status, notes = '') {

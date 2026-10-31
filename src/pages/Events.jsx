@@ -133,30 +133,33 @@ export default function Events() {
     const cleanEmail = (formData.email || '').trim().toLowerCase();
     const cleanPhone = (formData.phone || '').trim();
     const cleanRollNo = (formData.rollNo || '').trim();
-    const teamSize = parseInt(formData.teamSize || '1', 10);
+    const isTeam = formData.participationType === 'Team';
+    const teamSize = isTeam ? parseInt(formData.teamSize || '1', 10) : 1;
 
-    // Client-side limits matching Phase 1(d) SQL CHECK constraints
+    // Client-side validation matching Phase 6
     if (cleanFullName.length < 2 || cleanFullName.length > 100) {
       setRegError('Full name must be between 2 and 100 characters.');
       setIsSubmitting(false);
       return;
     }
-    if (!cleanEmail || !cleanEmail.includes('@')) {
-      setRegError('A valid email address is required.');
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      setRegError('A valid email address with a domain is required.');
       setIsSubmitting(false);
       return;
     }
-    if (cleanPhone.length < 7 || cleanPhone.length > 25) {
-      setRegError('Phone number must be between 7 and 25 characters.');
+    const phoneRegex = /^[+]?[\d\s-]{7,20}$/;
+    if (!phoneRegex.test(cleanPhone)) {
+      setRegError('Phone number must be between 7 and 20 digits (e.g. +91 9876543210).');
       setIsSubmitting(false);
       return;
     }
-    if (cleanRollNo.length < 2 || cleanRollNo.length > 50) {
-      setRegError('Student roll number must be between 2 and 50 characters.');
+    if (cleanRollNo.length < 3 || cleanRollNo.length > 30) {
+      setRegError('Student roll number must be between 3 and 30 characters.');
       setIsSubmitting(false);
       return;
     }
-    if (formData.participationType === 'Team' && (isNaN(teamSize) || teamSize < 1 || teamSize > 20)) {
+    if (isTeam && (isNaN(teamSize) || teamSize < 1 || teamSize > 20)) {
       setRegError('Team size must be between 1 and 20.');
       setIsSubmitting(false);
       return;
@@ -184,10 +187,10 @@ export default function Events() {
     } catch (err) {
       console.error('Registration submit error:', err);
       const msg = err.message || '';
-      if (msg.includes('23505') || msg.toLowerCase().includes('already applied') || msg.toLowerCase().includes('already registered')) {
-        setRegError('You have already applied/registered');
+      if (msg.includes('23505') || msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already applied')) {
+        setRegError('You are already registered for this event.');
       } else if (msg.includes('42501') || msg.toLowerCase().includes('closed')) {
-        setRegError('Applications/registrations are currently closed');
+        setRegError('Registration for this event is currently closed.');
       } else {
         setRegError(msg || 'Failed to complete registration. Please try again.');
       }

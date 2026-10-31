@@ -93,39 +93,40 @@ export default function JoinUs() {
     setIsDuplicate(false);
 
     if (isClosed) {
-      setErrorMsg('Applications/registrations are currently closed');
+      setErrorMsg('Applications are currently closed.');
+      setLoading(false);
+      return;
+    }
+
+    const cleanName = (formData.name || '').trim();
+    const cleanEmail = (formData.email || '').trim().toLowerCase();
+    const cleanStudentId = (formData.studentId || '').trim();
+    const cleanReason = (formData.reason || '').trim();
+
+    // Client-side validation before submit
+    if (cleanName.length < 2 || cleanName.length > 100) {
+      setErrorMsg('Full name must be between 2 and 100 characters.');
+      setLoading(false);
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      setErrorMsg('Please enter a valid email address with a domain.');
+      setLoading(false);
+      return;
+    }
+    if (cleanStudentId.length < 3 || cleanStudentId.length > 30) {
+      setErrorMsg('Admission Number / Student ID must be between 3 and 30 characters.');
+      setLoading(false);
+      return;
+    }
+    if (cleanReason.length < 10 || cleanReason.length > 2000) {
+      setErrorMsg('Statement of interest / reason must be between 10 and 2000 characters.');
       setLoading(false);
       return;
     }
 
     try {
-      const cleanName = (formData.name || '').trim();
-      const cleanEmail = (formData.email || '').trim().toLowerCase();
-      const cleanStudentId = (formData.studentId || '').trim();
-      const cleanReason = (formData.reason || '').trim();
-
-      // Client-side limits matching Phase 1(d) SQL CHECK constraints
-      if (cleanName.length < 2 || cleanName.length > 100) {
-        setErrorMsg('Full name must be between 2 and 100 characters.');
-        setLoading(false);
-        return;
-      }
-      if (!cleanEmail || !cleanEmail.includes('@')) {
-        setErrorMsg('Please enter a valid email address.');
-        setLoading(false);
-        return;
-      }
-      if (cleanStudentId.length < 2 || cleanStudentId.length > 50) {
-        setErrorMsg('Student Roll No / ID must be between 2 and 50 characters.');
-        setLoading(false);
-        return;
-      }
-      if (cleanReason.length < 5 || cleanReason.length > 5000) {
-        setErrorMsg('Statement of interest / reason must be between 5 and 5000 characters.');
-        setLoading(false);
-        return;
-      }
-
       await applicationsService.create({
         name: cleanName,
         email: cleanEmail,
@@ -149,10 +150,10 @@ export default function JoinUs() {
       console.error('Application submission error:', err);
       const msg = err.message || '';
       if (msg.includes('23505') || msg.toLowerCase().includes('already applied')) {
-        setErrorMsg('You have already applied/registered');
+        setErrorMsg('You have already applied for this recruitment cycle.');
         setIsDuplicate(true);
       } else if (msg.includes('42501') || msg.toLowerCase().includes('closed')) {
-        setErrorMsg('Applications/registrations are currently closed');
+        setErrorMsg('Applications are currently closed.');
       } else {
         setErrorMsg(msg || 'Failed to submit application. Please check your details and try again.');
       }
