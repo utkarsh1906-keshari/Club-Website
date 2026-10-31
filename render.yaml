@@ -27,3 +27,4 @@ services:
         value: Drones & Robotics Club | ABES Engineering College
       - key: VITE_APP_DESCRIPTION
         value: Official website of the Drones & Robotics Club at ABES Engineering College.
+
