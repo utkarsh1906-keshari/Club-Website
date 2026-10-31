@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
+import { Eye, EyeOff, ArrowLeft, AlertCircle, Clock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import './AdminLogin.css';
 
@@ -14,6 +14,9 @@ export default function AdminLogin({ onLoginSuccess }) {
 
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
+  const isIdle = searchParams.get('reason') === 'idle' || location.state?.reason === 'idle';
 
   const triggerShake = () => {
     setIsShaking(true);
@@ -71,6 +74,24 @@ export default function AdminLogin({ onLoginSuccess }) {
             <h1 className="admin-login-title">Admin Portal</h1>
             <p className="admin-login-desc">Sign in with your administrative credentials</p>
           </div>
+
+          {isIdle && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.65rem',
+              padding: '0.75rem 1rem',
+              background: 'rgba(234, 179, 8, 0.12)',
+              border: '1px solid rgba(234, 179, 8, 0.35)',
+              borderRadius: '8px',
+              color: '#fbbf24',
+              fontSize: '0.88rem',
+              marginBottom: '1.25rem'
+            }}>
+              <Clock size={18} style={{ color: '#eab308', flexShrink: 0 }} />
+              <span>You were logged out because of inactivity.</span>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="admin-login-form">
             {errorMessage && (

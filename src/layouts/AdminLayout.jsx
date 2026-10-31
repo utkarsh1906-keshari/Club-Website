@@ -14,12 +14,14 @@ import {
   Radio
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useIdleLogout } from '../hooks/useIdleLogout';
 import './AdminLayout.css';
 
 export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { adminProfile, signOut } = useAuth();
+  const { showWarning, remainingSeconds, stayLoggedIn } = useIdleLogout();
 
   const handleLogout = async () => {
     await signOut();
@@ -109,6 +111,44 @@ export default function AdminLayout() {
 
   return (
     <div className="admin-wrapper">
+      {/* Inactivity Warning Banner */}
+      {showWarning && (
+        <div style={{
+          position: 'fixed',
+          top: '1.25rem',
+          right: '1.25rem',
+          zIndex: 99999,
+          background: 'rgba(23, 23, 31, 0.98)',
+          backdropFilter: 'blur(12px)',
+          border: '1px solid #eab308',
+          borderRadius: '12px',
+          padding: '1rem 1.25rem',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(234, 179, 8, 0.2)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1rem',
+          maxWidth: '440px',
+          color: '#f8fafc'
+        }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#fbbf24', marginBottom: '0.2rem' }}>
+              Inactivity Timeout Warning
+            </div>
+            <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+              Your session will expire in <strong>{remainingSeconds}s</strong> due to inactivity.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={stayLoggedIn}
+            className="btn btn-primary"
+            style={{ padding: '0.45rem 0.85rem', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
+          >
+            Stay logged in
+          </button>
+        </div>
+      )}
+
       {/* Sidebar */}
       <aside className="admin-sidebar">
         <div className="admin-sidebar-header">
