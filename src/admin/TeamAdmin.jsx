@@ -8,11 +8,12 @@ import {
   AlertTriangle,
   AlertCircle
 } from 'lucide-react';
-import { membersService, DEFAULT_TEAM_CATEGORIES } from '../lib/dataService';
+import { membersService, domainsService, DEFAULT_TEAM_CATEGORIES } from '../lib/dataService';
 import ImageUpload from '../components/ImageUpload';
 
 export default function TeamAdmin() {
   const [members, setMembers] = useState([]);
+  const [domains, setDomains] = useState([]);
   const [categories] = useState(DEFAULT_TEAM_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -35,7 +36,7 @@ export default function TeamAdmin() {
     bio: '',
     github_url: '',
     linkedin_url: '',
-    sort_order: 10
+    sort_order: 100
   });
 
   // Delete modal
@@ -45,8 +46,15 @@ export default function TeamAdmin() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const mList = await membersService.getAll();
-      setMembers(mList);
+      const [mList, dList] = await Promise.all([
+        membersService.getAll(),
+        domainsService.getAll()
+      ]);
+      const safeMembers = import.meta.env.PROD
+        ? mList.filter(m => !String(m.id).startsWith('mem-') && !m.isDemo)
+        : mList;
+      setMembers(safeMembers);
+      setDomains(dList);
     } catch (err) {
       console.error('Failed to load roster:', err);
     } finally {
@@ -67,18 +75,22 @@ export default function TeamAdmin() {
       designation: 'Technical Coordinator',
       category: 'technical',
       department: 'Technical Verticals',
-      domain_id: 'ai-ml',
+      domain_id: '',
       image_url: '',
       badge: 'Domain Lead',
       bio: 'Mentoring student projects and leading domain workshops.',
       github_url: 'https://github.com',
       linkedin_url: 'https://linkedin.com',
-      sort_order: members.length + 1
+      sort_order: 100
     });
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (m) => {
+    if (import.meta.env.PROD && (String(m.id).startsWith('mem-') || m.isDemo)) {
+      alert('Local demo items cannot be edited in production.');
+      return;
+    }
     setEditingMember(m);
     setFormError('');
     setFormData({
@@ -93,7 +105,7 @@ export default function TeamAdmin() {
       bio: m.bio || '',
       github_url: m.github_url || '',
       linkedin_url: m.linkedin_url || '',
-      sort_order: m.sort_order || 10
+      sort_order: m.sort_order ?? 100
     });
     setIsModalOpen(true);
   };
@@ -108,13 +120,13 @@ export default function TeamAdmin() {
       designation: formData.designation,
       category: formData.category,
       department: formData.department,
-      domain_id: formData.domain_id,
+      domain_id: formData.domain_id || null,
       image_url: formData.image_url,
       badge: formData.badge,
       bio: formData.bio,
       github_url: formData.github_url,
       linkedin_url: formData.linkedin_url,
-      sort_order: parseInt(formData.sort_order || '10', 10)
+      sort_order: parseInt(formData.sort_order ?? 100, 10) || 100
     };
 
     try {
@@ -146,6 +158,10 @@ export default function TeamAdmin() {
       setDeleteError('Missing member ID for deletion');
       return;
     }
+    if (import.meta.env.PROD && (String(deleteTarget.id).startsWith('mem-') || deleteTarget.isDemo)) {
+      setDeleteError('Local demo items cannot be deleted in production.');
+      return;
+    }
     setDeleteError('');
     try {
       await membersService.delete(deleteTarget.id);
@@ -158,6 +174,9 @@ export default function TeamAdmin() {
   };
 
   const filteredMembers = members.filter(m => {
+    if (import.meta.env.PROD && (String(m.id).startsWith('mem-') || m.isDemo)) {
+      return false;
+    }
     const matchesCategory = categoryFilter === 'all' || m.category === categoryFilter;
     const q = search.toLowerCase();
     const matchesSearch = 
@@ -385,6 +404,22 @@ export default function TeamAdmin() {
                 </div>
 
                 <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>Technical Domain (Optional)</label>
+                  <select
+                    value={formData.domain_id || ''}
+                    onChange={e => setFormData({ ...formData, domain_id: e.target.value })}
+                    style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+                  >
+                    <option value="">None / Club-wide</option>
+                    {domains.map(d => (
+                      <option key={d.id} value={d.id}>{d.name} ({d.id})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Role Title *</label>
                   <input
                     type="text"
@@ -395,9 +430,7 @@ export default function TeamAdmin() {
                     style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
                   />
                 </div>
-              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Designation</label>
                   <input
@@ -408,7 +441,9 @@ export default function TeamAdmin() {
                     style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
                   />
                 </div>
+              </div>
 
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Department / Branch</label>
                   <input
@@ -416,6 +451,17 @@ export default function TeamAdmin() {
                     value={formData.department}
                     placeholder="e.g. Research & Innovation or Dept. of ECE"
                     onChange={e => setFormData({ ...formData, department: e.target.value })}
+                    style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Badge (Optional)</label>
+                  <input
+                    type="text"
+                    value={formData.badge}
+                    placeholder="e.g. Domain Lead or Core Team"
+                    onChange={e => setFormData({ ...formData, badge: e.target.value })}
                     style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
                   />
                 </div>
@@ -446,7 +492,7 @@ export default function TeamAdmin() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 120px', gap: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>GitHub URL</label>
                   <input
@@ -465,6 +511,16 @@ export default function TeamAdmin() {
                     value={formData.linkedin_url}
                     placeholder="https://linkedin.com/in/..."
                     onChange={e => setFormData({ ...formData, linkedin_url: e.target.value })}
+                    style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Sort Order</label>
+                  <input
+                    type="number"
+                    value={formData.sort_order}
+                    onChange={e => setFormData({ ...formData, sort_order: parseInt(e.target.value, 10) || 100 })}
                     style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
                   />
                 </div>

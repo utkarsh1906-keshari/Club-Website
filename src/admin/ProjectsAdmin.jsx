@@ -46,7 +46,10 @@ export default function ProjectsAdmin() {
         projectsService.getAll(),
         domainsService.getAll()
       ]);
-      setProjects(pData);
+      const safeProjects = import.meta.env.PROD
+        ? pData.filter(p => !String(p.id).startsWith('proj-') && !p.isDemo)
+        : pData;
+      setProjects(safeProjects);
       setDomains(dData);
     } catch (err) {
       console.error('Failed to load projects/domains:', err);
@@ -77,6 +80,10 @@ export default function ProjectsAdmin() {
   };
 
   const handleOpenEdit = (proj) => {
+    if (import.meta.env.PROD && (String(proj.id).startsWith('proj-') || proj.isDemo)) {
+      alert('Local demo items cannot be edited in production.');
+      return;
+    }
     setEditingProject(proj);
     setFormError('');
     setFormData({
@@ -145,6 +152,10 @@ export default function ProjectsAdmin() {
       setDeleteError('Missing project ID for deletion');
       return;
     }
+    if (import.meta.env.PROD && (String(deleteTarget.id).startsWith('proj-') || deleteTarget.isDemo)) {
+      setDeleteError('Local demo items cannot be deleted in production.');
+      return;
+    }
     setDeleteError('');
     try {
       await projectsService.delete(deleteTarget.id);
@@ -157,6 +168,9 @@ export default function ProjectsAdmin() {
   };
 
   const filteredProjects = projects.filter(p => {
+    if (import.meta.env.PROD && (String(p.id).startsWith('proj-') || p.isDemo)) {
+      return false;
+    }
     const matchesDomain = selectedDomain === 'all' || p.domain_id === selectedDomain;
     const q = search.toLowerCase();
     const matchesSearch = 

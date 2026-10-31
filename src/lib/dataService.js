@@ -681,7 +681,9 @@ export const projectsService = {
         const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
         if (!error && data) {
           setLocal('projects', data);
-          return data;
+          return import.meta.env.PROD
+            ? data.filter(p => !String(p.id).startsWith('proj-') && !p.isDemo)
+            : data;
         }
         if (error) {
           console.warn('Supabase projects fetch error:', error);
@@ -691,6 +693,9 @@ export const projectsService = {
         console.warn('Supabase projects fetch failed:', err);
         if (import.meta.env.PROD) throw err;
       }
+    }
+    if (import.meta.env.PROD) {
+      return [];
     }
     return getLocal('projects', SEED_PROJECTS);
   },
@@ -702,7 +707,8 @@ export const projectsService = {
   },
 
   async create(project) {
-    // Send ONLY real columns. Database generates id (uuid) and created_at.
+    // Send ONLY real columns: domain_id, title, description, image_url, technologies, team_members, github_url, demo_url, featured
+    // Database generates id (uuid) and created_at. Never send id or created_at.
     const row = {
       domain_id: cleanNull(project.domain_id),
       title: project.title ? String(project.title).trim() : '',
@@ -736,7 +742,7 @@ export const projectsService = {
 
     if (import.meta.env.DEV) {
       const fallbackProj = {
-        id: 'proj-' + Date.now(),
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'dev-' + Math.random().toString(36).substring(2, 10),
         created_at: new Date().toISOString(),
         isDemo: true,
         ...row
@@ -752,6 +758,9 @@ export const projectsService = {
   async update(id, projectData) {
     if (!id) {
       throw new Error('Project ID is required for update');
+    }
+    if (import.meta.env.PROD && (String(id).startsWith('proj-') || projectData.isDemo)) {
+      throw new Error('Cannot update local demo project in production');
     }
 
     const payload = {};
@@ -798,6 +807,9 @@ export const projectsService = {
     if (!id) {
       throw new Error('Project ID is required for deletion');
     }
+    if (import.meta.env.PROD && String(id).startsWith('proj-')) {
+      throw new Error('Cannot delete local demo project in production');
+    }
 
     if (supabase) {
       const { error } = await supabase.from('projects').delete().eq('id', id);
@@ -805,6 +817,8 @@ export const projectsService = {
         console.error('Supabase project delete error:', error);
         throw error;
       }
+    } else if (import.meta.env.PROD) {
+      throw new Error('Supabase client is not available');
     }
 
     const list = getLocal('projects', SEED_PROJECTS).filter(p => p.id !== id);
@@ -822,7 +836,10 @@ export const eventsService = {
         if (!error && Array.isArray(data)) {
           list = data;
           setLocal('events', list);
-          return list.map(sanitizeEvent).filter(Boolean);
+          const sanitized = list.map(sanitizeEvent).filter(Boolean);
+          return import.meta.env.PROD
+            ? sanitized.filter(e => !String(e.id).startsWith('event-') && !e.isDemo)
+            : sanitized;
         }
         if (error) {
           console.warn('Supabase events fetch error:', error);
@@ -832,6 +849,9 @@ export const eventsService = {
         console.warn('Supabase events fetch failed, using local cache:', err);
         if (import.meta.env.PROD) throw err;
       }
+    }
+    if (import.meta.env.PROD) {
+      return [];
     }
     if (!list || list.length === 0) {
       list = getLocal('events', SEED_EVENTS);
@@ -853,7 +873,8 @@ export const eventsService = {
   },
 
   async create(event) {
-    // Send ONLY real columns. Database generates id (uuid) and created_at.
+    // Send ONLY real columns: title, category, event_date, time, venue, description, image_url, badge, highlights, is_past, registration_open, registration_url
+    // Database generates id (uuid) and created_at. Never send id or created_at.
     const row = {
       title: (event.title ? String(event.title).trim() : '') || 'Untitled Event',
       category: (event.category ? String(event.category).trim() : '') || 'Workshop',
@@ -892,7 +913,7 @@ export const eventsService = {
 
     if (import.meta.env.DEV) {
       const fallbackEvent = {
-        id: 'event-' + Date.now(),
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'dev-' + Math.random().toString(36).substring(2, 10),
         created_at: new Date().toISOString(),
         isDemo: true,
         ...row
@@ -909,6 +930,9 @@ export const eventsService = {
   async update(id, eventData) {
     if (!id) {
       throw new Error('Event ID is required for update');
+    }
+    if (import.meta.env.PROD && (String(id).startsWith('event-') || eventData.isDemo)) {
+      throw new Error('Cannot update local demo event in production');
     }
 
     const payload = {};
@@ -961,6 +985,9 @@ export const eventsService = {
     if (!id) {
       throw new Error('Event ID is required for deletion');
     }
+    if (import.meta.env.PROD && String(id).startsWith('event-')) {
+      throw new Error('Cannot delete local demo event in production');
+    }
 
     if (supabase) {
       const { error } = await supabase.from('events').delete().eq('id', id);
@@ -968,6 +995,8 @@ export const eventsService = {
         console.error('Supabase event delete error:', error);
         throw error;
       }
+    } else if (import.meta.env.PROD) {
+      throw new Error('Supabase client is not available');
     }
 
     const current = await this.getAll();
@@ -1066,7 +1095,9 @@ export const membersService = {
         const { data, error } = await supabase.from('members').select('*').order('sort_order', { ascending: true });
         if (!error && data) {
           setLocal('members', data);
-          return data;
+          return import.meta.env.PROD
+            ? data.filter(m => !String(m.id).startsWith('mem-') && !m.isDemo)
+            : data;
         }
         if (error) {
           console.warn('Supabase members fetch error:', error);
@@ -1076,6 +1107,9 @@ export const membersService = {
         console.warn('Supabase members fetch failed, using local cache:', err);
         if (import.meta.env.PROD) throw err;
       }
+    }
+    if (import.meta.env.PROD) {
+      return [];
     }
     return getLocal('members', SEED_MEMBERS);
   },
@@ -1087,7 +1121,8 @@ export const membersService = {
       throw new Error(`Invalid member category '${member.category}'. Must be one of: leadership, technical, management`);
     }
 
-    // Send ONLY real columns. Database generates id (uuid) and created_at.
+    // Send ONLY real columns: name, role, designation, category, department, domain_id, image_url, badge, bio, github_url, linkedin_url, sort_order
+    // Database generates id (uuid) and created_at. Never send id or created_at.
     const row = {
       name: member.name ? String(member.name).trim() : '',
       role: member.role ? String(member.role).trim() : '',
@@ -1124,7 +1159,7 @@ export const membersService = {
 
     if (import.meta.env.DEV) {
       const fallbackMem = {
-        id: 'mem-' + Date.now(),
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'dev-' + Math.random().toString(36).substring(2, 10),
         created_at: new Date().toISOString(),
         isDemo: true,
         ...row
@@ -1140,6 +1175,9 @@ export const membersService = {
   async update(id, memberData) {
     if (!id) {
       throw new Error('Member ID is required for update');
+    }
+    if (import.meta.env.PROD && (String(id).startsWith('mem-') || memberData.isDemo)) {
+      throw new Error('Cannot update local demo member in production');
     }
 
     const payload = {};
@@ -1196,6 +1234,9 @@ export const membersService = {
     if (!id) {
       throw new Error('Member ID is required for deletion');
     }
+    if (import.meta.env.PROD && String(id).startsWith('mem-')) {
+      throw new Error('Cannot delete local demo member in production');
+    }
 
     if (supabase) {
       const { error } = await supabase.from('members').delete().eq('id', id);
@@ -1203,6 +1244,8 @@ export const membersService = {
         console.error('Supabase member delete error:', error);
         throw error;
       }
+    } else if (import.meta.env.PROD) {
+      throw new Error('Supabase client is not available');
     }
 
     const list = getLocal('members', SEED_MEMBERS).filter(m => m.id !== id);

@@ -66,7 +66,10 @@ export default function EventsAdmin() {
     setLoading(true);
     try {
       const data = await eventsService.getAll();
-      setEvents(data);
+      const safeEvents = import.meta.env.PROD
+        ? data.filter(e => !String(e.id).startsWith('event-') && !e.isDemo)
+        : data;
+      setEvents(safeEvents);
     } catch (err) {
       console.error('Failed to load events:', err);
     } finally {
@@ -99,6 +102,10 @@ export default function EventsAdmin() {
   };
 
   const handleOpenEdit = (evt) => {
+    if (import.meta.env.PROD && (String(evt.id).startsWith('event-') || evt.isDemo)) {
+      alert('Local demo items cannot be edited in production.');
+      return;
+    }
     setEditingEvent(evt);
     setFormError('');
     setFormData({
@@ -172,6 +179,10 @@ export default function EventsAdmin() {
       setDeleteError('Missing event ID for deletion');
       return;
     }
+    if (import.meta.env.PROD && (String(deleteTarget.id).startsWith('event-') || deleteTarget.isDemo)) {
+      setDeleteError('Local demo items cannot be deleted in production.');
+      return;
+    }
     setDeleteError('');
     try {
       await eventsService.delete(deleteTarget.id);
@@ -197,6 +208,9 @@ export default function EventsAdmin() {
   };
 
   const filteredEvents = events.filter(e => {
+    if (import.meta.env.PROD && (String(e.id).startsWith('event-') || e.isDemo)) {
+      return false;
+    }
     const q = search.toLowerCase();
     return (
       e.title?.toLowerCase().includes(q) ||
@@ -501,6 +515,17 @@ export default function EventsAdmin() {
                   rows="3"
                   value={formData.description}
                   onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>External Registration URL (Optional)</label>
+                <input
+                  type="url"
+                  value={formData.registration_url}
+                  placeholder="https://... (leave blank for standard registration)"
+                  onChange={e => setFormData({ ...formData, registration_url: e.target.value })}
                   style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
                 />
               </div>
