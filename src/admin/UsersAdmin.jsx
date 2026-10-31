@@ -5,13 +5,15 @@ import {
   Edit, 
   Trash2, 
   Crown, 
-  GraduationCap, 
   Layers, 
   Calendar, 
   Image as ImageIcon, 
   X, 
-  AlertTriangle 
+  AlertTriangle,
+  AlertCircle,
+  Info
 } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
 const DEFAULT_USERS = [
   {
@@ -19,7 +21,6 @@ const DEFAULT_USERS = [
     name: 'Ms. Unnati Mehta',
     email: 'unnati.mehta@abes.ac.in',
     role: 'super_admin',
-    roleTitle: 'Faculty Coordinator (Super Admin)',
     domain_scope: null,
     is_active: true
   },
@@ -28,7 +29,6 @@ const DEFAULT_USERS = [
     name: 'Executive Club Leadership',
     email: 'leadership@droneandrobotics.club',
     role: 'super_admin',
-    roleTitle: 'Club Head (Super Admin)',
     domain_scope: null,
     is_active: true
   },
@@ -37,7 +37,6 @@ const DEFAULT_USERS = [
     name: 'Asra Kamal',
     email: 'asra.aiml@abes.ac.in',
     role: 'domain_lead',
-    roleTitle: 'Domain Lead (AI/ML)',
     domain_scope: 'ai-ml',
     is_active: true
   },
@@ -46,7 +45,6 @@ const DEFAULT_USERS = [
     name: 'Akshat Modanwal',
     email: 'akshat.vlsi@abes.ac.in',
     role: 'domain_lead',
-    roleTitle: 'Domain Lead (VLSI)',
     domain_scope: 'vlsi',
     is_active: true
   },
@@ -55,7 +53,6 @@ const DEFAULT_USERS = [
     name: 'Pratham Singh',
     email: 'pratham.events@abes.ac.in',
     role: 'event_manager',
-    roleTitle: 'Event Manager',
     domain_scope: null,
     is_active: true
   },
@@ -64,21 +61,15 @@ const DEFAULT_USERS = [
     name: 'Divyansh Goel',
     email: 'divyansh.media@abes.ac.in',
     role: 'social_media',
-    roleTitle: 'Social Media & Media Head',
     domain_scope: null,
     is_active: true
   }
 ];
 
 export default function UsersAdmin() {
-  const [users, setUsers] = useState(() => {
-    try {
-      const saved = localStorage.getItem('drc_admin_users');
-      return saved ? JSON.parse(saved) : DEFAULT_USERS;
-    } catch {
-      return DEFAULT_USERS;
-    }
-  });
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [pageError, setPageError] = useState(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -89,12 +80,58 @@ export default function UsersAdmin() {
     domain_scope: 'ai-ml',
     is_active: true
   });
+  const [formError, setFormError] = useState(null);
+  const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
 
-  const saveUsers = (newList) => {
-    setUsers(newList);
-    localStorage.setItem('drc_admin_users', JSON.stringify(newList));
+  const loadUsers = async () => {
+    setLoading(true);
+    setPageError(null);
+    if (supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('admin_users')
+          .select('id, auth_user_id, name, email, role, domain_scope, is_active, created_at')
+          .order('created_at', { ascending: true });
+
+        if (error) {
+          console.error('Supabase admin_users fetch error:', error);
+          if (import.meta.env.PROD) {
+            setPageError(error.message || 'Failed to fetch admin users from database.');
+            setLoading(false);
+            return;
+          }
+        } else if (data && data.length > 0) {
+          setUsers(data);
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to load admin users:', err);
+        if (import.meta.env.PROD) {
+          setPageError(err.message || 'Failed to fetch admin users from database.');
+          setLoading(false);
+          return;
+        }
+      }
+    }
+
+    if (import.meta.env.DEV) {
+      try {
+        const saved = localStorage.getItem('drc_admin_users');
+        setUsers(saved ? JSON.parse(saved) : DEFAULT_USERS);
+      } catch {
+        setUsers(DEFAULT_USERS);
+      }
+    } else {
+      setUsers([]);
+    }
+    setLoading(false);
   };
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
   const handleOpenCreate = () => {
     setEditingUser(null);
@@ -105,52 +142,127 @@ export default function UsersAdmin() {
       domain_scope: 'ai-ml',
       is_active: true
     });
+    setFormError(null);
     setIsModalOpen(true);
   };
 
   const handleOpenEdit = (u) => {
     setEditingUser(u);
     setFormData({
-      name: u.name,
-      email: u.email,
-      role: u.role,
+      name: u.name || '',
+      email: u.email || '',
+      role: u.role || 'domain_lead',
       domain_scope: u.domain_scope || 'ai-ml',
-      is_active: u.is_active
+      is_active: u.is_active !== undefined ? Boolean(u.is_active) : true
     });
+    setFormError(null);
     setIsModalOpen(true);
   };
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
-    const roleTitles = {
-      super_admin: 'Super Admin',
-      domain_lead: `Domain Lead (${formData.domain_scope?.toUpperCase() || ''})`,
-      event_manager: 'Event Manager',
-      social_media: 'Social Media Team'
-    };
+    setSaving(true);
+    setFormError(null);
+
+    const cleanName = (formData.name || '').trim();
+    const cleanEmail = (formData.email || '').trim().toLowerCase();
+
+    if (!cleanName) {
+      setFormError('Name is required.');
+      setSaving(false);
+      return;
+    }
+
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setFormError('A valid email address is required.');
+      setSaving(false);
+      return;
+    }
 
     const payload = {
-      ...formData,
-      roleTitle: roleTitles[formData.role] || formData.role
+      name: cleanName,
+      email: cleanEmail,
+      role: formData.role,
+      domain_scope: formData.role === 'domain_lead' ? (formData.domain_scope || null) : null,
+      is_active: Boolean(formData.is_active)
     };
 
-    if (editingUser) {
-      const updated = users.map(u => u.id === editingUser.id ? { ...u, ...payload } : u);
-      saveUsers(updated);
-    } else {
-      const newUser = {
-        id: 'u-' + Date.now(),
-        ...payload
-      };
-      saveUsers([...users, newUser]);
+    if (supabase) {
+      try {
+        if (editingUser) {
+          const { data, error } = await supabase
+            .from('admin_users')
+            .update(payload)
+            .eq('id', editingUser.id)
+            .select()
+            .single();
+
+          if (error) throw error;
+          setUsers(prev => prev.map(u => u.id === editingUser.id ? data : u));
+        } else {
+          const { data, error } = await supabase
+            .from('admin_users')
+            .insert([payload])
+            .select()
+            .single();
+
+          if (error) throw error;
+          setUsers(prev => [...prev, data]);
+        }
+        setIsModalOpen(false);
+      } catch (err) {
+        console.error('Failed to save admin user in Supabase:', err);
+        setFormError(err.message || 'Failed to save admin user in database.');
+      } finally {
+        setSaving(false);
+      }
+      return;
     }
-    setIsModalOpen(false);
+
+    if (import.meta.env.DEV) {
+      if (editingUser) {
+        const updated = users.map(u => u.id === editingUser.id ? { ...u, ...payload } : u);
+        setUsers(updated);
+        localStorage.setItem('drc_admin_users', JSON.stringify(updated));
+      } else {
+        const newUser = {
+          id: 'u-' + Date.now(),
+          ...payload
+        };
+        const updated = [...users, newUser];
+        setUsers(updated);
+        localStorage.setItem('drc_admin_users', JSON.stringify(updated));
+      }
+      setIsModalOpen(false);
+    } else {
+      setFormError('Supabase client is not available in production.');
+    }
+    setSaving(false);
   };
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
+
+    if (supabase) {
+      try {
+        const { error } = await supabase
+          .from('admin_users')
+          .delete()
+          .eq('id', deleteTarget.id);
+
+        if (error) throw error;
+      } catch (err) {
+        console.error('Failed to delete admin user:', err);
+        alert(err.message || 'Failed to delete admin user from database.');
+        return;
+      }
+    }
+
     const filtered = users.filter(u => u.id !== deleteTarget.id);
-    saveUsers(filtered);
+    setUsers(filtered);
+    if (import.meta.env.DEV) {
+      localStorage.setItem('drc_admin_users', JSON.stringify(filtered));
+    }
     setDeleteTarget(null);
   };
 
@@ -172,7 +284,7 @@ export default function UsersAdmin() {
   return (
     <div className="admin-page-container">
       {/* Header */}
-      <div className="admin-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      <div className="admin-page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Admin Role &amp; Access Control</h1>
           <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem' }}>
@@ -183,6 +295,13 @@ export default function UsersAdmin() {
           <UserPlus size={16} /> Add Administrator
         </button>
       </div>
+
+      {pageError && (
+        <div style={{ padding: '0.85rem 1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#dc2626', fontSize: '0.9rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <AlertCircle size={18} />
+          <span>{pageError}</span>
+        </div>
+      )}
 
       {/* Permissions Guide Card */}
       <div className="aesthetic-card" style={{ marginBottom: '1.75rem', background: 'var(--color-bg-elevated)', padding: '1.25rem' }}>
@@ -199,79 +318,119 @@ export default function UsersAdmin() {
 
       {/* Table */}
       <div className="aesthetic-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="table-wrapper">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Administrator</th>
-                <th>Assigned Role</th>
-                <th>Scope</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map(u => (
-                <tr key={u.id}>
-                  <td>
-                    <strong>{u.name}</strong>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                      {u.email}
-                    </div>
-                  </td>
-                  <td>{getRoleBadge(u.role)}</td>
-                  <td>
-                    {u.domain_scope ? (
-                      <span className="tag-pill">{u.domain_scope.toUpperCase()}</span>
-                    ) : (
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Global</span>
-                    )}
-                  </td>
-                  <td>
-                    {u.is_active ? (
-                      <span className="tag-pill" style={{ background: '#ecfdf5', color: '#059669' }}>Active</span>
-                    ) : (
-                      <span className="tag-pill" style={{ background: '#f1f5f9', color: '#64748b' }}>Disabled</span>
-                    )}
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '0.4rem' }}>
-                      <button 
-                        onClick={() => handleOpenEdit(u)}
-                        className="btn btn-secondary" 
-                        style={{ padding: '0.35rem 0.6rem' }} 
-                        title="Edit administrator"
-                      >
-                        <Edit size={14} />
-                      </button>
-                      <button 
-                        onClick={() => setDeleteTarget(u)}
-                        disabled={users.length <= 1}
-                        className="btn btn-secondary" 
-                        style={{ padding: '0.35rem 0.6rem', color: '#dc2626' }} 
-                        title="Delete administrator"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </td>
+        {loading ? (
+          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+            Loading administrators...
+          </div>
+        ) : (
+          <div className="table-wrapper">
+            <table className="admin-table">
+              <thead>
+                <tr>
+                  <th>Administrator</th>
+                  <th>Assigned Role</th>
+                  <th>Scope</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {users.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                      No administrator profiles configured in admin_users.
+                    </td>
+                  </tr>
+                ) : (
+                  users.map(u => (
+                    <tr key={u.id}>
+                      <td>
+                        <strong>{u.name}</strong>
+                        <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
+                          {u.email}
+                        </div>
+                      </td>
+                      <td>{getRoleBadge(u.role)}</td>
+                      <td>
+                        {u.domain_scope ? (
+                          <span className="tag-pill">{u.domain_scope.toUpperCase()}</span>
+                        ) : (
+                          <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>Global</span>
+                        )}
+                      </td>
+                      <td>
+                        {u.is_active ? (
+                          <span className="tag-pill" style={{ background: '#ecfdf5', color: '#059669' }}>Active</span>
+                        ) : (
+                          <span className="tag-pill" style={{ background: '#f1f5f9', color: '#64748b' }}>Disabled</span>
+                        )}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                          <button 
+                            onClick={() => handleOpenEdit(u)}
+                            className="btn btn-secondary" 
+                            style={{ padding: '0.35rem 0.6rem' }} 
+                            title="Edit administrator"
+                          >
+                            <Edit size={14} />
+                          </button>
+                          <button 
+                            onClick={() => setDeleteTarget(u)}
+                            disabled={users.length <= 1}
+                            className="btn btn-secondary" 
+                            style={{ padding: '0.35rem 0.6rem', color: '#dc2626' }} 
+                            title="Delete administrator"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* Modal */}
+      {/* Create / Edit Modal */}
       {isModalOpen && (
         <div className="lightbox-backdrop" onClick={() => setIsModalOpen(false)}>
-          <div className="aesthetic-card" style={{ maxWidth: '520px', width: '90%', padding: '2rem' }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <div className="aesthetic-card" style={{ maxWidth: '540px', width: '90%', padding: '2rem' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <h2 style={{ fontSize: '1.35rem' }}>{editingUser ? 'Edit Administrator' : 'Add Administrator'}</h2>
               <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
                 <X size={20} />
               </button>
             </div>
+
+            {/* Clear note required by Phase 7 */}
+            <div style={{
+              padding: '0.85rem 1rem',
+              background: 'rgba(59, 130, 246, 0.08)',
+              border: '1px solid rgba(59, 130, 246, 0.25)',
+              borderRadius: '8px',
+              color: 'var(--color-text-secondary)',
+              fontSize: '0.85rem',
+              lineHeight: 1.5,
+              marginBottom: '1.25rem',
+              display: 'flex',
+              gap: '0.65rem'
+            }}>
+              <Info size={18} style={{ color: '#2563eb', flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                First create the login in <strong>Supabase &gt; Authentication &gt; Users</strong>, then add the email here. Adding an email here only grants the role; it does not create the Supabase auth user.
+              </div>
+            </div>
+
+            {formError && (
+              <div style={{ padding: '0.75rem 1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', color: '#dc2626', fontSize: '0.88rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <AlertCircle size={16} />
+                <span>{formError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
@@ -279,6 +438,7 @@ export default function UsersAdmin() {
                 <input
                   type="text"
                   required
+                  placeholder="e.g. Asra Kamal"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
                   style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
@@ -290,6 +450,7 @@ export default function UsersAdmin() {
                 <input
                   type="email"
                   required
+                  placeholder="e.g. user@abes.ac.in"
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
                   style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
@@ -341,8 +502,8 @@ export default function UsersAdmin() {
                 <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary">
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  {editingUser ? 'Save Updates' : 'Add Admin'}
+                <button type="submit" disabled={saving} className="btn btn-primary">
+                  {saving ? 'Saving...' : editingUser ? 'Save Updates' : 'Add Admin'}
                 </button>
               </div>
             </form>
@@ -350,7 +511,7 @@ export default function UsersAdmin() {
         </div>
       )}
 
-      {/* Delete Modal */}
+      {/* Delete Confirmation Modal */}
       {deleteTarget && (
         <div className="lightbox-backdrop" onClick={() => setDeleteTarget(null)}>
           <div className="aesthetic-card" style={{ maxWidth: '400px', width: '90%', padding: '2rem', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
