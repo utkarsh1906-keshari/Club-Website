@@ -1622,16 +1622,21 @@ export const announcementsService = {
         const { data, error } = await query;
         if (!error && data) {
           setLocal('announcements', data);
-          return data;
+          return import.meta.env.PROD
+            ? data.filter(a => !String(a.id).startsWith('ann-') && !a.isDemo)
+            : data;
         }
         if (error) {
           console.warn('Supabase announcements fetch error:', error);
-          throw error;
+          if (import.meta.env.PROD) throw error;
         }
       } catch (err) {
         console.warn('Supabase announcements fetch failed:', err);
-        throw err;
+        if (import.meta.env.PROD) throw err;
       }
+    }
+    if (import.meta.env.PROD) {
+      return [];
     }
     const list = getLocal('announcements', SEED_ANNOUNCEMENTS);
     if (onlyActive) return list.filter(a => a.is_active);
@@ -1639,12 +1644,6 @@ export const announcementsService = {
   },
 
   async create(announcement) {
-    const cleanNull = (val) => {
-      if (val === undefined || val === null) return null;
-      const str = String(val).trim();
-      return str === '' ? null : str;
-    };
-
     // Send ONLY title, content, badge, link_url, is_active, expires_at.
     // Database generates id (uuid) and created_at. Empty strings converted to null.
     const row = {
@@ -1675,27 +1674,28 @@ export const announcementsService = {
       }
     }
 
-    // Fallback only if supabase client is not initialized
-    const fallbackAnn = {
-      id: 'ann-' + Date.now(),
-      created_at: new Date().toISOString(),
-      ...row
-    };
-    const list = [fallbackAnn, ...getLocal('announcements', SEED_ANNOUNCEMENTS)];
-    setLocal('announcements', list);
-    return fallbackAnn;
+    if (import.meta.env.DEV) {
+      const fallbackAnn = {
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : 'dev-' + Math.random().toString(36).substring(2, 10),
+        created_at: new Date().toISOString(),
+        isDemo: true,
+        ...row
+      };
+      const list = [fallbackAnn, ...getLocal('announcements', SEED_ANNOUNCEMENTS)];
+      setLocal('announcements', list);
+      return fallbackAnn;
+    }
+
+    throw new Error('Supabase client is not available');
   },
 
   async update(id, announcementData) {
     if (!id) {
       throw new Error('Announcement ID is required for update');
     }
-
-    const cleanNull = (val) => {
-      if (val === undefined || val === null) return null;
-      const str = String(val).trim();
-      return str === '' ? null : str;
-    };
+    if (import.meta.env.PROD && (String(id).startsWith('ann-') || announcementData.isDemo)) {
+      throw new Error('Cannot update local demo announcement in production');
+    }
 
     const payload = {};
     if (announcementData.title !== undefined) {
@@ -1739,16 +1739,23 @@ export const announcementsService = {
       }
     }
 
-    const list = getLocal('announcements', SEED_ANNOUNCEMENTS).map(a =>
-      a.id === id ? { ...a, ...payload } : a
-    );
-    setLocal('announcements', list);
-    return list.find(a => a.id === id);
+    if (import.meta.env.DEV) {
+      const list = getLocal('announcements', SEED_ANNOUNCEMENTS).map(a =>
+        a.id === id ? { ...a, ...payload } : a
+      );
+      setLocal('announcements', list);
+      return list.find(a => a.id === id);
+    }
+
+    throw new Error('Supabase client is not available');
   },
 
   async delete(id) {
     if (!id) {
       throw new Error('Announcement ID is required for deletion');
+    }
+    if (import.meta.env.PROD && String(id).startsWith('ann-')) {
+      throw new Error('Cannot delete local demo announcement in production');
     }
 
     if (supabase) {
@@ -1757,6 +1764,8 @@ export const announcementsService = {
         console.error('Supabase announcement delete error:', error);
         throw error;
       }
+    } else if (import.meta.env.PROD) {
+      throw new Error('Supabase client is not available');
     }
 
     const list = getLocal('announcements', SEED_ANNOUNCEMENTS).filter(a => a.id !== id);

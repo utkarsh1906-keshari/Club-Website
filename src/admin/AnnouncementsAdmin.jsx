@@ -36,7 +36,10 @@ export default function AnnouncementsAdmin() {
     setLoading(true);
     try {
       const data = await announcementsService.getAll(false);
-      setAnnouncements(data);
+      const safeData = import.meta.env.PROD
+        ? data.filter(a => !String(a.id).startsWith('ann-') && !a.isDemo)
+        : data;
+      setAnnouncements(safeData);
     } catch (err) {
       console.error('Failed to load announcements:', err);
     } finally {
@@ -63,6 +66,10 @@ export default function AnnouncementsAdmin() {
   };
 
   const handleOpenEdit = (ann) => {
+    if (import.meta.env.PROD && (String(ann.id).startsWith('ann-') || ann.isDemo)) {
+      alert('Local demo items cannot be edited in production.');
+      return;
+    }
     setFormError('');
     setEditingAnn(ann);
     setFormData({
@@ -124,6 +131,10 @@ export default function AnnouncementsAdmin() {
       setDeleteError('Missing announcement ID for deletion');
       return;
     }
+    if (import.meta.env.PROD && (String(deleteTarget.id).startsWith('ann-') || deleteTarget.isDemo)) {
+      setDeleteError('Local demo items cannot be deleted in production.');
+      return;
+    }
     setDeleteError('');
     try {
       await announcementsService.delete(deleteTarget.id);
@@ -179,7 +190,14 @@ export default function AnnouncementsAdmin() {
                 announcements.map(ann => (
                   <tr key={ann.id}>
                     <td>
-                      <strong>{ann.title}</strong>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <strong>{ann.title}</strong>
+                        {import.meta.env.DEV && ann.isDemo && (
+                          <span className="tag-pill" style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontSize: '0.68rem', padding: '0.1rem 0.35rem' }}>
+                            Local demo mode
+                          </span>
+                        )}
+                      </div>
                       <div style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', marginTop: '0.2rem' }}>
                         {ann.content}
                       </div>
