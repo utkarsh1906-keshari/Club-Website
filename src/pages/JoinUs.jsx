@@ -172,10 +172,31 @@ export default function JoinUs() {
     );
   }
 
-  const isPastDeadline = Boolean(
-    cycleConfig?.deadline && new Date(cycleConfig.deadline).setHours(23, 59, 59, 999) < Date.now()
+  const getIstDeadlineTimestamp = (deadlineStr) => {
+    if (!deadlineStr) return null;
+    const dateOnly = String(deadlineStr).split('T')[0].trim();
+    if (!dateOnly || !/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) return null;
+    const parsed = new Date(`${dateOnly}T23:59:59.999+05:30`).getTime();
+    return isNaN(parsed) ? null : parsed;
+  };
+
+  const deadlineTimestamp = getIstDeadlineTimestamp(cycleConfig?.deadline);
+  const now = Date.now();
+  const isPastDeadline = Boolean(deadlineTimestamp && now > deadlineTimestamp);
+  const isClosed = !cycleConfig || !cycleConfig.is_active || isPastDeadline;
+
+  // Deadline within 3 days check (applications close soon)
+  const isClosingSoon = Boolean(
+    !isClosed &&
+    deadlineTimestamp &&
+    deadlineTimestamp - now > 0 &&
+    deadlineTimestamp - now <= 3 * 24 * 60 * 60 * 1000
   );
-  const isClosed = !cycleConfig?.is_active || isPastDeadline;
+
+  const formattedDeadline = deadlineTimestamp
+    ? new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'long' }).format(new Date(deadlineTimestamp))
+    : '';
+
   const activeQuestions = questions.filter(q => q.active !== false);
 
   // Group active questions: grid-compatible vs full-width
@@ -228,10 +249,24 @@ export default function JoinUs() {
                   <h2 className="closed-heading">Recruitment Window Closed</h2>
                   <p className="closed-description">
                     {cycleConfig?.closed_message || 
-                      'Recruitment for the Drones & Robotics Club takes place in scheduled semester drives. Submissions are currently paused while our technical squads review applications and run project labs.'}
+                      'Applications are currently closed for this recruitment cycle.'}
                   </p>
                 </div>
               </div>
+
+              {cycleConfig?.instructions && (
+                <div style={{ margin: '1.25rem 0', padding: '1.25rem', background: 'var(--color-bg-elevated)', borderRadius: '8px', borderLeft: '4px solid var(--color-primary)' }}>
+                  <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.5rem' }}>Recruitment Instructions &amp; Information</h4>
+                  <p style={{ fontSize: '0.88rem', color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: 0, whiteSpace: 'pre-wrap' }}>
+                    {cycleConfig.instructions}
+                  </p>
+                  {cycleConfig.target_years && (
+                    <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '0.6rem', marginBottom: 0 }}>
+                      <strong>Target Batches:</strong> {cycleConfig.target_years}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Four Technical Domains Preview Cards */}
               <div className="closed-prep-section">
@@ -325,6 +360,24 @@ export default function JoinUs() {
                 <p>
                   Please fill out the authentic details below.
                 </p>
+
+                {isClosingSoon && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.65rem',
+                    padding: '0.75rem 1rem',
+                    background: 'rgba(234, 179, 8, 0.12)',
+                    border: '1px solid rgba(234, 179, 8, 0.35)',
+                    borderRadius: '8px',
+                    color: '#854d0e',
+                    fontSize: '0.88rem',
+                    marginBottom: '1rem'
+                  }}>
+                    <Clock size={18} style={{ color: '#ca8a04', flexShrink: 0 }} />
+                    <span>Applications close on <strong>{formattedDeadline}</strong> (India time).</span>
+                  </div>
+                )}
 
                 {alreadySubmittedEmail && (
                   <div className="already-applied-banner" style={{
@@ -553,8 +606,7 @@ export default function JoinUs() {
                         placeholder="https://"
                         value={customAnswers[q.label] || ''}
                         onChange={e => handleCustomChange(q.label, e.target.value)}
-                      >
-                      </input>
+                      />
                     ) : q.type === 'tel' ? (
                       <input
                         type="tel"
