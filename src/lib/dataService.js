@@ -1323,6 +1323,23 @@ export const teamCategoriesService = {
 };
 
 export const recruitmentService = {
+  async getLatestCycle() {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('recruitment_cycles')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) {
+        console.error('Supabase recruitment cycle fetch error:', error);
+        throw error;
+      }
+      return data;
+    }
+    return getLocal('recruitment_cycle', null);
+  },
+
   async getCycleConfig() {
     let base = SEED_RECRUITMENT_CYCLE;
     if (supabase) {
@@ -1330,12 +1347,19 @@ export const recruitmentService = {
         const { data, error } = await supabase
           .from('recruitment_cycles')
           .select('*')
-          .order('updated_at', { ascending: false })
+          .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        if (!error && data) base = { ...SEED_RECRUITMENT_CYCLE, ...data };
+        if (!error && data) {
+          base = { ...SEED_RECRUITMENT_CYCLE, ...data };
+          setLocal('recruitment_cycle', base);
+        } else if (error) {
+          console.warn('Supabase recruitment cycle fetch error:', error);
+          if (import.meta.env.PROD) throw error;
+        }
       } catch (err) {
-        console.warn('Supabase recruitment cycle fetch failed, using local fallback:', err);
+        console.warn('Supabase recruitment cycle fetch failed:', err);
+        if (import.meta.env.PROD) throw err;
       }
     } else {
       base = getLocal('recruitment_cycle', SEED_RECRUITMENT_CYCLE);
@@ -1344,8 +1368,103 @@ export const recruitmentService = {
     return { ...base, questions };
   },
 
+  async updateCycle(id, updates) {
+    if (!id) throw new Error('Recruitment cycle ID is required');
+
+    // Canonical columns: title, subtitle, target_years, deadline, is_active, closed_message, instructions
+    // Never send id, created_at, or updated_at
+    const payload = {};
+    if (updates.title !== undefined) payload.title = String(updates.title).trim();
+    if (updates.subtitle !== undefined) payload.subtitle = cleanNull(updates.subtitle);
+    if (updates.target_years !== undefined) payload.target_years = cleanNull(updates.target_years);
+    if (updates.deadline !== undefined) {
+      payload.deadline = cleanNull(updates.deadline) ? String(updates.deadline).split('T')[0] : null;
+    }
+    if (updates.is_active !== undefined) payload.is_active = Boolean(updates.is_active);
+    if (updates.closed_message !== undefined) payload.closed_message = cleanNull(updates.closed_message);
+    if (updates.instructions !== undefined) payload.instructions = cleanNull(updates.instructions);
+
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('recruitment_cycles')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase recruitment cycle update error:', error);
+        throw error;
+      }
+
+      if (data) {
+        setLocal('recruitment_cycle', data);
+        return data;
+      }
+    }
+
+    if (import.meta.env.DEV) {
+      const current = getLocal('recruitment_cycle', SEED_RECRUITMENT_CYCLE);
+      const updated = { ...current, ...payload, id };
+      setLocal('recruitment_cycle', updated);
+      return updated;
+    }
+
+    throw new Error('Supabase client is not available');
+  },
+
+  async createCycle(cycleData) {
+    const rawId = String(cycleData.id || '').trim();
+    if (!rawId) throw new Error('Cycle ID is required (e.g. cycle-2026-2027)');
+
+    const row = {
+      id: rawId,
+      title: cycleData.title ? String(cycleData.title).trim() : 'Recruitment Drive',
+      subtitle: cleanNull(cycleData.subtitle),
+      target_years: cleanNull(cycleData.target_years) || '1st & 2nd Year B.Tech',
+      deadline: cleanNull(cycleData.deadline) ? String(cycleData.deadline).split('T')[0] : null,
+      is_active: cycleData.is_active !== undefined ? Boolean(cycleData.is_active) : true,
+      closed_message: cleanNull(cycleData.closed_message),
+      instructions: cleanNull(cycleData.instructions)
+    };
+
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('recruitment_cycles')
+        .insert(row)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase recruitment cycle create error:', error);
+        throw error;
+      }
+
+      if (data) {
+        setLocal('recruitment_cycle', data);
+        return data;
+      }
+    }
+
+    if (import.meta.env.DEV) {
+      const fallbackCycle = {
+        isDemo: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        ...row
+      };
+      setLocal('recruitment_cycle', fallbackCycle);
+      return fallbackCycle;
+    }
+
+    throw new Error('Supabase client is not available');
+  },
+
   async updateCycleConfig(updates) {
     const current = await this.getCycleConfig();
+    if (current?.id) {
+      return this.updateCycle(current.id, updates);
+    }
     const updated = {
       ...current,
       ...updates,
@@ -1365,8 +1484,10 @@ export const recruitmentService = {
           setLocal('recruitment_cycle', data);
           return { ...data, questions: updated.questions };
         }
+        if (error) throw error;
       } catch (err) {
         console.warn('Supabase recruitment cycle update error:', err);
+        if (import.meta.env.PROD) throw err;
       }
     }
     setLocal('recruitment_cycle', updated);
