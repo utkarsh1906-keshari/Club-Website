@@ -1366,9 +1366,17 @@ export const announcementsService = {
         let query = supabase.from('announcements').select('*').order('created_at', { ascending: false });
         if (onlyActive) query = query.eq('is_active', true);
         const { data, error } = await query;
-        if (!error && data) return data;
+        if (!error && data) {
+          setLocal('announcements', data);
+          return data;
+        }
+        if (error) {
+          console.warn('Supabase announcements fetch error:', error);
+          throw error;
+        }
       } catch (err) {
         console.warn('Supabase announcements fetch failed:', err);
+        throw err;
       }
     }
     const list = getLocal('announcements', SEED_ANNOUNCEMENTS);
@@ -1377,63 +1385,126 @@ export const announcementsService = {
   },
 
   async create(announcement) {
-    const newAnn = {
-      id: 'ann-' + Date.now(),
-      created_at: new Date().toISOString(),
-      ...announcement
+    const cleanNull = (val) => {
+      if (val === undefined || val === null) return null;
+      const str = String(val).trim();
+      return str === '' ? null : str;
     };
+
+    // Send ONLY title, content, badge, link_url, is_active, expires_at.
+    // Database generates id (uuid) and created_at. Empty strings converted to null.
+    const row = {
+      title: announcement.title ? String(announcement.title).trim() : '',
+      content: announcement.content ? String(announcement.content).trim() : '',
+      badge: cleanNull(announcement.badge),
+      link_url: cleanNull(announcement.link_url),
+      is_active: announcement.is_active !== undefined ? Boolean(announcement.is_active) : true,
+      expires_at: cleanNull(announcement.expires_at)
+    };
+
     if (supabase) {
-      try {
-        const { data, error } = await supabase.from('announcements').insert([newAnn]).select().single();
-        if (!error && data) {
-          const list = [data, ...getLocal('announcements', SEED_ANNOUNCEMENTS)];
-          setLocal('announcements', list);
-          return data;
-        }
-      } catch (err) {
-        console.warn('Supabase announcement insert error:', err);
+      const { data, error } = await supabase
+        .from('announcements')
+        .insert(row)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase announcement insert error:', error);
+        throw error;
+      }
+
+      if (data) {
+        const list = [data, ...getLocal('announcements', SEED_ANNOUNCEMENTS).filter(a => a.id !== data.id)];
+        setLocal('announcements', list);
+        return data;
       }
     }
-    const list = [newAnn, ...getLocal('announcements', SEED_ANNOUNCEMENTS)];
+
+    // Fallback only if supabase client is not initialized
+    const fallbackAnn = {
+      id: 'ann-' + Date.now(),
+      created_at: new Date().toISOString(),
+      ...row
+    };
+    const list = [fallbackAnn, ...getLocal('announcements', SEED_ANNOUNCEMENTS)];
     setLocal('announcements', list);
-    return newAnn;
+    return fallbackAnn;
   },
 
   async update(id, announcementData) {
+    if (!id) {
+      throw new Error('Announcement ID is required for update');
+    }
+
+    const cleanNull = (val) => {
+      if (val === undefined || val === null) return null;
+      const str = String(val).trim();
+      return str === '' ? null : str;
+    };
+
+    const payload = {};
+    if (announcementData.title !== undefined) {
+      payload.title = announcementData.title ? String(announcementData.title).trim() : '';
+    }
+    if (announcementData.content !== undefined) {
+      payload.content = announcementData.content ? String(announcementData.content).trim() : '';
+    }
+    if (announcementData.badge !== undefined) {
+      payload.badge = cleanNull(announcementData.badge);
+    }
+    if (announcementData.link_url !== undefined) {
+      payload.link_url = cleanNull(announcementData.link_url);
+    }
+    if (announcementData.is_active !== undefined) {
+      payload.is_active = Boolean(announcementData.is_active);
+    }
+    if (announcementData.expires_at !== undefined) {
+      payload.expires_at = cleanNull(announcementData.expires_at);
+    }
+
     if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('announcements')
-          .update(announcementData)
-          .eq('id', id)
-          .select()
-          .single();
-        if (!error && data) {
-          const list = getLocal('announcements', SEED_ANNOUNCEMENTS).map(a =>
-            a.id === id ? { ...a, ...data } : a
-          );
-          setLocal('announcements', list);
-          return data;
-        }
-      } catch (err) {
-        console.warn('Supabase announcement update error:', err);
+      const { data, error } = await supabase
+        .from('announcements')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase announcement update error:', error);
+        throw error;
+      }
+
+      if (data) {
+        const list = getLocal('announcements', SEED_ANNOUNCEMENTS).map(a =>
+          a.id === id ? { ...a, ...data } : a
+        );
+        setLocal('announcements', list);
+        return data;
       }
     }
+
     const list = getLocal('announcements', SEED_ANNOUNCEMENTS).map(a =>
-      a.id === id ? { ...a, ...announcementData } : a
+      a.id === id ? { ...a, ...payload } : a
     );
     setLocal('announcements', list);
     return list.find(a => a.id === id);
   },
 
   async delete(id) {
+    if (!id) {
+      throw new Error('Announcement ID is required for deletion');
+    }
+
     if (supabase) {
-      try {
-        await supabase.from('announcements').delete().eq('id', id);
-      } catch (err) {
-        console.warn('Supabase announcement delete error:', err);
+      const { error } = await supabase.from('announcements').delete().eq('id', id);
+      if (error) {
+        console.error('Supabase announcement delete error:', error);
+        throw error;
       }
     }
+
     const list = getLocal('announcements', SEED_ANNOUNCEMENTS).filter(a => a.id !== id);
     setLocal('announcements', list);
     return true;

@@ -6,7 +6,8 @@ import {
   CheckCircle2, 
   XCircle, 
   X, 
-  AlertTriangle 
+  AlertTriangle,
+  AlertCircle
 } from 'lucide-react';
 import { announcementsService } from '../lib/dataService';
 
@@ -17,6 +18,8 @@ export default function AnnouncementsAdmin() {
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAnn, setEditingAnn] = useState(null);
+  const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     content: '',
@@ -27,6 +30,7 @@ export default function AnnouncementsAdmin() {
   });
 
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteError, setDeleteError] = useState('');
 
   const loadAnnouncements = async () => {
     setLoading(true);
@@ -45,6 +49,7 @@ export default function AnnouncementsAdmin() {
   }, []);
 
   const handleOpenCreate = () => {
+    setFormError('');
     setEditingAnn(null);
     setFormData({
       title: '',
@@ -58,11 +63,12 @@ export default function AnnouncementsAdmin() {
   };
 
   const handleOpenEdit = (ann) => {
+    setFormError('');
     setEditingAnn(ann);
     setFormData({
       title: ann.title || '',
       content: ann.content || '',
-      badge: ann.badge || 'Notice',
+      badge: ann.badge || '',
       link_url: ann.link_url || '',
       is_active: ann.is_active !== false,
       expires_at: ann.expires_at ? ann.expires_at.split('T')[0] : ''
@@ -72,37 +78,60 @@ export default function AnnouncementsAdmin() {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    setFormError('');
+    setSaving(true);
     try {
       if (editingAnn) {
-        await announcementsService.update(editingAnn.id, formData);
+        if (!editingAnn.id) {
+          throw new Error('Missing announcement ID for update');
+        }
+        const updated = await announcementsService.update(editingAnn.id, formData);
+        if (updated) {
+          setAnnouncements(prev => prev.map(a => (a.id === editingAnn.id ? updated : a)));
+        }
       } else {
-        await announcementsService.create(formData);
+        const created = await announcementsService.create(formData);
+        if (created) {
+          setAnnouncements(prev => [created, ...prev.filter(a => a.id !== created.id)]);
+        }
       }
       setIsModalOpen(false);
       loadAnnouncements();
     } catch (err) {
       console.error('Failed to save announcement:', err);
-      alert('Error saving announcement: ' + err.message);
+      setFormError(err.message || 'Error saving announcement. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleToggleActive = async (ann) => {
+    if (!ann?.id) return;
     try {
-      await announcementsService.update(ann.id, { is_active: !ann.is_active });
-      loadAnnouncements();
+      const updated = await announcementsService.update(ann.id, { is_active: !ann.is_active });
+      if (updated) {
+        setAnnouncements(prev => prev.map(a => (a.id === ann.id ? updated : a)));
+      }
     } catch (err) {
       console.error('Failed to toggle active state:', err);
+      alert('Failed to update status: ' + err.message);
     }
   };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
+    if (!deleteTarget.id) {
+      setDeleteError('Missing announcement ID for deletion');
+      return;
+    }
+    setDeleteError('');
     try {
       await announcementsService.delete(deleteTarget.id);
+      setAnnouncements(prev => prev.filter(a => a.id !== deleteTarget.id));
       setDeleteTarget(null);
-      loadAnnouncements();
     } catch (err) {
       console.error('Failed to delete announcement:', err);
+      setDeleteError(err.message || 'Failed to delete announcement');
     }
   };
 
@@ -233,6 +262,26 @@ export default function AnnouncementsAdmin() {
             </div>
 
             <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {formError && (
+                <div
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '6px',
+                    backgroundColor: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    color: '#dc2626',
+                    fontSize: '0.875rem',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.5rem',
+                    lineHeight: 1.4
+                  }}
+                >
+                  <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <span style={{ wordBreak: 'break-word' }}>{formError}</span>
+                </div>
+              )}
+
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Title *</label>
                 <input
@@ -305,11 +354,11 @@ export default function AnnouncementsAdmin() {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-                <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary" disabled={saving}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  {editingAnn ? 'Save Changes' : 'Create Notice'}
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? 'Saving...' : editingAnn ? 'Save Changes' : 'Create Notice'}
                 </button>
               </div>
             </form>
@@ -326,6 +375,23 @@ export default function AnnouncementsAdmin() {
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
               Are you sure you want to delete <strong>{deleteTarget.title}</strong>?
             </p>
+            {deleteError && (
+              <div
+                style={{
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '6px',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#dc2626',
+                  fontSize: '0.85rem',
+                  marginBottom: '1rem',
+                  textAlign: 'left',
+                  wordBreak: 'break-word'
+                }}
+              >
+                {deleteError}
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem' }}>
               <button onClick={() => setDeleteTarget(null)} className="btn btn-secondary">
                 Cancel
