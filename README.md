@@ -109,8 +109,9 @@ npm run build
 
 ---
 
-## 🚢 Vercel Deployment
+## 🚢 Vercel & Render Deployment
 
+### Vercel
 1. Push your repository branch to GitHub (`git push origin main`).
 2. In your [Vercel Dashboard](https://vercel.com/dashboard), import the repository.
 3. Configure the **Environment Variables** in Vercel:
@@ -121,3 +122,13 @@ npm run build
    - `VITE_APP_URL`
    - `VITE_CONTACT_EMAIL`
 4. Deploy. Vercel automatically applies the rewrites and security response headers defined in [`vercel.json`](./vercel.json).
+
+### Render
+1. Push your repository branch to GitHub (`git push origin main`).
+2. In your [Render Dashboard](https://dashboard.render.com/), choose either:
+   - **Option A (Blueprint / Automatic)**: Click **New +** -> **Blueprint**, and select this repository. Render will automatically read [`render.yaml`](./render.yaml), configuring the build command (`npm run build`), publish directory (`dist`), SPA rewrite rules (`/*` -> `/index.html`), and security headers.
+   - **Option B (Static Site)**: Click **New +** -> **Static Site**, connect your repo, set Build Command to `npm run build` and Publish Directory to `dist`. In **Redirects/Rewrites**, add a rewrite: Source `/*` -> Destination `/index.html` (Action: `Rewrite`).
+3. Under **Environment Variables**, set:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+4. Deploy. Subsequent pushes to `main` will automatically trigger fresh builds.

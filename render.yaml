@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: drone-and-robotics-club
+    runtime: static
+    buildCommand: npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+    envVars:
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: VITE_APP_TITLE
+        value: Drones & Robotics Club | ABES Engineering College
+      - key: VITE_APP_DESCRIPTION
+        value: Official website of the Drones & Robotics Club at ABES Engineering College.
