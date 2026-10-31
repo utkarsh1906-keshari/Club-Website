@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, ArrowUpRight, Award, ShieldCheck, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { membersService, teamCategoriesService } from '../lib/dataService';
 import './Team.css';

@@ -7,12 +7,8 @@ import {
   X, 
   CheckCircle2, 
   User, 
-  Mail, 
-  Phone, 
-  CreditCard,
-  Building,
   Users,
-  Sparkles,
+  Sparkles, 
   Ticket,
   AlertCircle
 } from 'lucide-react';

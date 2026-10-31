@@ -4,13 +4,9 @@ import {
   FolderGit2, 
   Search, 
   ExternalLink, 
-  GitBranch, 
-  Tag, 
   Users, 
   Sparkles, 
-  Filter, 
-  ArrowRight,
-  Code2
+  ArrowRight
 } from 'lucide-react';
 
 function GithubIcon({ size = 15 }) {
