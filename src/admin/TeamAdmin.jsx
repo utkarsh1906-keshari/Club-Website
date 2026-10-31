@@ -6,26 +6,23 @@ import {
   Search, 
   X, 
   AlertTriangle,
-  Tag
+  AlertCircle
 } from 'lucide-react';
-import { membersService, teamCategoriesService, DEFAULT_TEAM_CATEGORIES } from '../lib/dataService';
+import { membersService, DEFAULT_TEAM_CATEGORIES } from '../lib/dataService';
 import ImageUpload from '../components/ImageUpload';
 
 export default function TeamAdmin() {
   const [members, setMembers] = useState([]);
-  const [categories, setCategories] = useState(DEFAULT_TEAM_CATEGORIES);
+  const [categories] = useState(DEFAULT_TEAM_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
 
-  // Category creation in modal
-  const [isAddingCategory, setIsAddingCategory] = useState(false);
-  const [newCategoryInput, setNewCategoryInput] = useState('');
-  const [categoryError, setCategoryError] = useState('');
-
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
+  const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     role: '',
@@ -43,18 +40,15 @@ export default function TeamAdmin() {
 
   // Delete modal
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteError, setDeleteError] = useState('');
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [mList, cList] = await Promise.all([
-        membersService.getAll(),
-        teamCategoriesService.getAll()
-      ]);
+      const mList = await membersService.getAll();
       setMembers(mList);
-      setCategories(cList);
     } catch (err) {
-      console.error('Failed to load roster or categories:', err);
+      console.error('Failed to load roster:', err);
     } finally {
       setLoading(false);
     }
@@ -64,27 +58,9 @@ export default function TeamAdmin() {
     loadData();
   }, []);
 
-  const handleCreateCategory = async () => {
-    const trimmed = (newCategoryInput || '').trim();
-    if (!trimmed) {
-      setCategoryError('Please enter a category name.');
-      return;
-    }
-    setCategoryError('');
-    try {
-      const created = await teamCategoriesService.create(trimmed);
-      const updatedList = await teamCategoriesService.getAll();
-      setCategories(updatedList);
-      setFormData(prev => ({ ...prev, category: created.id }));
-      setNewCategoryInput('');
-      setIsAddingCategory(false);
-    } catch (err) {
-      setCategoryError(err.message || 'Failed to create category.');
-    }
-  };
-
   const handleOpenCreate = () => {
     setEditingMember(null);
+    setFormError('');
     setFormData({
       name: '',
       role: 'Domain Coordinator',
@@ -104,6 +80,7 @@ export default function TeamAdmin() {
 
   const handleOpenEdit = (m) => {
     setEditingMember(m);
+    setFormError('');
     setFormData({
       name: m.name || '',
       role: m.role || '',
@@ -123,33 +100,60 @@ export default function TeamAdmin() {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    setFormError('');
+    setSaving(true);
     const payload = {
-      ...formData,
+      name: formData.name,
+      role: formData.role,
+      designation: formData.designation,
+      category: formData.category,
+      department: formData.department,
+      domain_id: formData.domain_id,
+      image_url: formData.image_url,
+      badge: formData.badge,
+      bio: formData.bio,
+      github_url: formData.github_url,
+      linkedin_url: formData.linkedin_url,
       sort_order: parseInt(formData.sort_order || '10', 10)
     };
 
     try {
       if (editingMember) {
-        await membersService.update(editingMember.id, payload);
+        if (!editingMember.id) throw new Error('Missing member ID for update');
+        const updated = await membersService.update(editingMember.id, payload);
+        if (updated) {
+          setMembers(prev => prev.map(m => m.id === editingMember.id ? updated : m));
+        }
       } else {
-        await membersService.create(payload);
+        const created = await membersService.create(payload);
+        if (created) {
+          setMembers(prev => [...prev.filter(m => m.id !== created.id), created]);
+        }
       }
       setIsModalOpen(false);
       loadData();
     } catch (err) {
       console.error('Failed to save team member:', err);
-      alert('Error saving member: ' + err.message);
+      setFormError(err.message || 'Error saving member. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
+    if (!deleteTarget.id) {
+      setDeleteError('Missing member ID for deletion');
+      return;
+    }
+    setDeleteError('');
     try {
       await membersService.delete(deleteTarget.id);
+      setMembers(prev => prev.filter(m => m.id !== deleteTarget.id));
       setDeleteTarget(null);
-      loadData();
     } catch (err) {
       console.error('Failed to delete member:', err);
+      setDeleteError(err.message || 'Failed to delete member');
     }
   };
 
@@ -264,7 +268,14 @@ export default function TeamAdmin() {
                           }}
                         />
                         <div>
-                          <strong>{m.name}</strong>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <strong>{m.name}</strong>
+                            {import.meta.env.DEV && m.isDemo && (
+                              <span className="tag-pill" style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontSize: '0.68rem', padding: '0.1rem 0.35rem' }}>
+                                Local demo mode
+                              </span>
+                            )}
+                          </div>
                           <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>
                             {m.badge}
                           </div>
@@ -328,6 +339,25 @@ export default function TeamAdmin() {
             </div>
 
             <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {formError && (
+                <div
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '6px',
+                    backgroundColor: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    color: '#dc2626',
+                    fontSize: '0.875rem',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.5rem',
+                    lineHeight: 1.4
+                  }}
+                >
+                  <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <span style={{ wordBreak: 'break-word' }}>{formError}</span>
+                </div>
+              )}
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Full Name *</label>
                 <input
@@ -342,109 +372,16 @@ export default function TeamAdmin() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: 600 }}>Category *</label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsAddingCategory(!isAddingCategory);
-                        setCategoryError('');
-                      }}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: 'var(--color-primary)',
-                        fontSize: '0.78rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        padding: 0
-                      }}
-                    >
-                      {isAddingCategory ? 'Hide' : '+ Create Category'}
-                    </button>
-                  </div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.35rem' }}>Category *</label>
                   <select
                     value={formData.category}
-                    onChange={e => {
-                      if (e.target.value === '__new__') {
-                        setIsAddingCategory(true);
-                      } else {
-                        setFormData({ ...formData, category: e.target.value });
-                      }
-                    }}
+                    onChange={e => setFormData({ ...formData, category: e.target.value })}
                     style={{ width: '100%', padding: '0.65rem', borderRadius: '6px', border: '1px solid var(--color-border)' }}
                   >
-                    {categories.map(c => (
-                      <option key={c.id} value={c.id}>{c.label}</option>
-                    ))}
-                    <option value="__new__">+ Create More Categories...</option>
+                    <option value="leadership">Club Leadership</option>
+                    <option value="technical">Technical Domain Lead</option>
+                    <option value="management">Creative &amp; Management Team</option>
                   </select>
-
-                  {isAddingCategory && (
-                    <div style={{
-                      marginTop: '0.5rem',
-                      padding: '0.65rem 0.75rem',
-                      background: 'var(--color-bg-elevated)',
-                      border: '1px solid var(--color-border)',
-                      borderRadius: '6px'
-                    }}>
-                      <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.35rem' }}>
-                        CREATE NEW CATEGORY
-                      </span>
-                      <div style={{ display: 'flex', gap: '0.4rem' }}>
-                        <input
-                          type="text"
-                          placeholder="e.g. Advisory Board, Mentors, Hardware Wing..."
-                          value={newCategoryInput}
-                          onChange={e => {
-                            setNewCategoryInput(e.target.value);
-                            if (categoryError) setCategoryError('');
-                          }}
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleCreateCategory();
-                            }
-                          }}
-                          autoFocus
-                          style={{
-                            flex: 1,
-                            padding: '0.45rem 0.65rem',
-                            fontSize: '0.85rem',
-                            borderRadius: '4px',
-                            border: '1px solid var(--color-primary)',
-                            background: 'var(--color-bg-surface)',
-                            color: 'var(--color-text-primary)'
-                          }}
-                        />
-                        <button
-                          type="button"
-                          className="btn btn-primary"
-                          onClick={handleCreateCategory}
-                          style={{ padding: '0.45rem 0.75rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
-                        >
-                          Save
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          onClick={() => {
-                            setIsAddingCategory(false);
-                            setNewCategoryInput('');
-                            setCategoryError('');
-                          }}
-                          style={{ padding: '0.45rem 0.6rem', fontSize: '0.8rem' }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                      {categoryError && (
-                        <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '0.35rem' }}>
-                          {categoryError}
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 <div>
@@ -534,11 +471,11 @@ export default function TeamAdmin() {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-                <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary" disabled={saving}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  {editingMember ? 'Save Changes' : 'Add Member'}
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? 'Saving...' : editingMember ? 'Save Changes' : 'Add Member'}
                 </button>
               </div>
             </form>
@@ -555,6 +492,23 @@ export default function TeamAdmin() {
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
               Are you sure you want to remove <strong>{deleteTarget.name}</strong> from the club roster?
             </p>
+            {deleteError && (
+              <div
+                style={{
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '6px',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#dc2626',
+                  fontSize: '0.85rem',
+                  marginBottom: '1rem',
+                  textAlign: 'left',
+                  wordBreak: 'break-word'
+                }}
+              >
+                {deleteError}
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem' }}>
               <button onClick={() => setDeleteTarget(null)} className="btn btn-secondary">
                 Cancel

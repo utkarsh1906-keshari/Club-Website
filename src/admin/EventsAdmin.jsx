@@ -6,8 +6,8 @@ import {
   Users, 
   X, 
   AlertTriangle,
+  AlertCircle,
   Search,
-  Upload,
   RotateCcw
 } from 'lucide-react';
 import { eventsService, eventRegistrationsService, normalizeImageUrl } from '../lib/dataService';
@@ -21,6 +21,8 @@ export default function EventsAdmin() {
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
+  const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     category: 'Workshop',
@@ -43,6 +45,7 @@ export default function EventsAdmin() {
 
   // Delete confirmation
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteError, setDeleteError] = useState('');
 
   const handleResetDefaults = async () => {
     if (window.confirm('Are you sure you want to restore official club events and posters? This will fix any broken or corrupted event data.')) {
@@ -77,6 +80,7 @@ export default function EventsAdmin() {
 
   const handleOpenCreate = () => {
     setEditingEvent(null);
+    setFormError('');
     setFormData({
       title: '',
       category: 'Workshop',
@@ -96,6 +100,7 @@ export default function EventsAdmin() {
 
   const handleOpenEdit = (evt) => {
     setEditingEvent(evt);
+    setFormError('');
     setFormData({
       title: evt.title || '',
       category: evt.category || 'Workshop',
@@ -115,6 +120,8 @@ export default function EventsAdmin() {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    setFormError('');
+    setSaving(true);
     const highlightsArr = formData.highlights
       ? formData.highlights.split(',').map(h => h.trim()).filter(Boolean)
       : [];
@@ -122,33 +129,57 @@ export default function EventsAdmin() {
     const cleanImageUrl = normalizeImageUrl(formData.image_url);
 
     const payload = {
-      ...formData,
+      title: formData.title,
+      category: formData.category,
+      event_date: formData.event_date,
+      time: formData.time,
+      venue: formData.venue,
+      description: formData.description,
       image_url: cleanImageUrl,
-      highlights: highlightsArr
+      badge: formData.badge,
+      highlights: highlightsArr,
+      is_past: Boolean(formData.is_past),
+      registration_open: formData.registration_open !== false,
+      registration_url: formData.registration_url
     };
 
     try {
       if (editingEvent) {
-        await eventsService.update(editingEvent.id, payload);
+        if (!editingEvent.id) throw new Error('Missing event ID for update');
+        const updated = await eventsService.update(editingEvent.id, payload);
+        if (updated) {
+          setEvents(prev => prev.map(e => e.id === editingEvent.id ? updated : e));
+        }
       } else {
-        await eventsService.create(payload);
+        const created = await eventsService.create(payload);
+        if (created) {
+          setEvents(prev => [created, ...prev.filter(e => e.id !== created.id)]);
+        }
       }
       setIsModalOpen(false);
       loadEvents();
     } catch (err) {
       console.error('Failed to save event:', err);
-      alert('Error saving event: ' + err.message);
+      setFormError(err.message || 'Error saving event. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
+    if (!deleteTarget.id) {
+      setDeleteError('Missing event ID for deletion');
+      return;
+    }
+    setDeleteError('');
     try {
       await eventsService.delete(deleteTarget.id);
+      setEvents(prev => prev.filter(e => e.id !== deleteTarget.id));
       setDeleteTarget(null);
-      loadEvents();
     } catch (err) {
       console.error('Failed to delete event:', err);
+      setDeleteError(err.message || 'Failed to delete event');
     }
   };
 
@@ -262,8 +293,13 @@ export default function EventsAdmin() {
                         />
                         <div>
                           <strong>{evt.title}</strong>
-                          <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)' }}>
-                            {evt.badge || evt.category}
+                          <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                            <span>{evt.badge || evt.category}</span>
+                            {import.meta.env.DEV && evt.isDemo && (
+                              <span className="tag-pill" style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontSize: '0.68rem', padding: '0.1rem 0.35rem' }}>
+                                Local demo mode
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -337,6 +373,25 @@ export default function EventsAdmin() {
             </div>
 
             <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {formError && (
+                <div
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '6px',
+                    backgroundColor: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    color: '#dc2626',
+                    fontSize: '0.875rem',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.5rem',
+                    lineHeight: 1.4
+                  }}
+                >
+                  <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <span style={{ wordBreak: 'break-word' }}>{formError}</span>
+                </div>
+              )}
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Event Title *</label>
                 <input
@@ -471,11 +526,11 @@ export default function EventsAdmin() {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-                <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary" disabled={saving}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  {editingEvent ? 'Save Changes' : 'Publish Event'}
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? 'Saving...' : editingEvent ? 'Save Changes' : 'Publish Event'}
                 </button>
               </div>
             </form>
@@ -492,6 +547,23 @@ export default function EventsAdmin() {
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
               Are you sure you want to delete <strong>{deleteTarget.title}</strong>? This will also remove any associated registrations.
             </p>
+            {deleteError && (
+              <div
+                style={{
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '6px',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#dc2626',
+                  fontSize: '0.85rem',
+                  marginBottom: '1rem',
+                  textAlign: 'left',
+                  wordBreak: 'break-word'
+                }}
+              >
+                {deleteError}
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem' }}>
               <button onClick={() => setDeleteTarget(null)} className="btn btn-secondary">
                 Cancel

@@ -5,7 +5,8 @@ import {
   Trash2, 
   Search, 
   X, 
-  AlertTriangle 
+  AlertTriangle,
+  AlertCircle
 } from 'lucide-react';
 import { projectsService, domainsService } from '../lib/dataService';
 import ImageUpload from '../components/ImageUpload';
@@ -20,6 +21,8 @@ export default function ProjectsAdmin() {
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     domain_id: 'ai-ml',
@@ -34,6 +37,7 @@ export default function ProjectsAdmin() {
 
   // Delete modal
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteError, setDeleteError] = useState('');
 
   const loadData = async () => {
     setLoading(true);
@@ -57,6 +61,7 @@ export default function ProjectsAdmin() {
 
   const handleOpenCreate = () => {
     setEditingProject(null);
+    setFormError('');
     setFormData({
       title: '',
       domain_id: domains[0]?.id || 'ai-ml',
@@ -73,6 +78,7 @@ export default function ProjectsAdmin() {
 
   const handleOpenEdit = (proj) => {
     setEditingProject(proj);
+    setFormError('');
     setFormData({
       title: proj.title || proj.name || '',
       domain_id: proj.domain_id || 'ai-ml',
@@ -89,6 +95,8 @@ export default function ProjectsAdmin() {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    setFormError('');
+    setSaving(true);
     const techArr = formData.technologies
       ? formData.technologies.split(',').map(t => t.trim()).filter(Boolean)
       : [];
@@ -105,31 +113,46 @@ export default function ProjectsAdmin() {
       team_members: membersArr,
       github_url: formData.github_url,
       demo_url: formData.demo_url,
-      featured: formData.featured
+      featured: Boolean(formData.featured)
     };
 
     try {
       if (editingProject) {
-        await projectsService.update(editingProject.id, payload);
+        if (!editingProject.id) throw new Error('Missing project ID for update');
+        const updated = await projectsService.update(editingProject.id, payload);
+        if (updated) {
+          setProjects(prev => prev.map(p => p.id === editingProject.id ? updated : p));
+        }
       } else {
-        await projectsService.create(payload);
+        const created = await projectsService.create(payload);
+        if (created) {
+          setProjects(prev => [created, ...prev.filter(p => p.id !== created.id)]);
+        }
       }
       setIsModalOpen(false);
       loadData();
     } catch (err) {
       console.error('Failed to save project:', err);
-      alert('Error saving project: ' + err.message);
+      setFormError(err.message || 'Error saving project. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
+    if (!deleteTarget.id) {
+      setDeleteError('Missing project ID for deletion');
+      return;
+    }
+    setDeleteError('');
     try {
       await projectsService.delete(deleteTarget.id);
+      setProjects(prev => prev.filter(p => p.id !== deleteTarget.id));
       setDeleteTarget(null);
-      loadData();
     } catch (err) {
       console.error('Failed to delete project:', err);
+      setDeleteError(err.message || 'Failed to delete project');
     }
   };
 
@@ -246,7 +269,14 @@ export default function ProjectsAdmin() {
                           }}
                         />
                         <div>
-                          <strong>{proj.title || proj.name}</strong>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <strong>{proj.title || proj.name}</strong>
+                            {import.meta.env.DEV && proj.isDemo && (
+                              <span className="tag-pill" style={{ background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontSize: '0.68rem', padding: '0.1rem 0.35rem' }}>
+                                Local demo mode
+                              </span>
+                            )}
+                          </div>
                           <div style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {proj.description || proj.desc}
                           </div>
@@ -320,6 +350,25 @@ export default function ProjectsAdmin() {
             </div>
 
             <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {formError && (
+                <div
+                  style={{
+                    padding: '0.75rem 1rem',
+                    borderRadius: '6px',
+                    backgroundColor: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    color: '#dc2626',
+                    fontSize: '0.875rem',
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '0.5rem',
+                    lineHeight: 1.4
+                  }}
+                >
+                  <AlertCircle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <span style={{ wordBreak: 'break-word' }}>{formError}</span>
+                </div>
+              )}
               <div>
                 <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.3rem' }}>Project Title *</label>
                 <input
@@ -431,11 +480,11 @@ export default function ProjectsAdmin() {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem' }}>
-                <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="btn btn-secondary" disabled={saving}>
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary">
-                  {editingProject ? 'Save Changes' : 'Create Project'}
+                <button type="submit" className="btn btn-primary" disabled={saving}>
+                  {saving ? 'Saving...' : editingProject ? 'Save Changes' : 'Create Project'}
                 </button>
               </div>
             </form>
@@ -452,6 +501,23 @@ export default function ProjectsAdmin() {
             <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
               Are you sure you want to delete <strong>{deleteTarget.title || deleteTarget.name}</strong>?
             </p>
+            {deleteError && (
+              <div
+                style={{
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '6px',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fecaca',
+                  color: '#dc2626',
+                  fontSize: '0.85rem',
+                  marginBottom: '1rem',
+                  textAlign: 'left',
+                  wordBreak: 'break-word'
+                }}
+              >
+                {deleteError}
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem' }}>
               <button onClick={() => setDeleteTarget(null)} className="btn btn-secondary">
                 Cancel

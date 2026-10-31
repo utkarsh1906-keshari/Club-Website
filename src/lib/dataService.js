@@ -549,30 +549,34 @@ export function normalizeImageUrl(url) {
   return trimmed;
 }
 
+export function cleanNull(val) {
+  if (val === undefined || val === null) return null;
+  const str = String(val).trim();
+  return str === '' ? null : str;
+}
+
+export function cleanArray(val) {
+  if (Array.isArray(val)) {
+    return val.map(item => String(item || '').trim()).filter(Boolean);
+  }
+  if (typeof val === 'string') {
+    return val.split(',').map(item => item.trim()).filter(Boolean);
+  }
+  return [];
+}
+
 export function sanitizeEvent(evt) {
   if (!evt || typeof evt !== 'object') return null;
 
-  // Normalize highlights into a safe array of strings
-  let highlights = [];
-  if (Array.isArray(evt.highlights)) {
-    highlights = evt.highlights
-      .map(h => (typeof h === 'string' ? h.trim() : String(h || '')))
-      .filter(Boolean);
-  } else if (typeof evt.highlights === 'string') {
-    highlights = evt.highlights
-      .split(',')
-      .map(s => s.trim())
-      .filter(Boolean);
-  }
+  const highlights = cleanArray(evt.highlights);
 
   const category = (evt.category && typeof evt.category === 'string' && evt.category.trim())
     ? evt.category.trim()
     : 'Workshop';
 
-  const imageUrl = normalizeImageUrl(evt.image_url || evt.image);
+  const imageUrl = cleanNull(evt.image_url || evt.image ? normalizeImageUrl(evt.image_url || evt.image) : null);
 
-  return {
-    id: String(evt.id || ('event-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6))),
+  const sanitized = {
     title: evt.title || 'Untitled Event',
     category: category,
     event_date: evt.event_date || evt.date || 'Upcoming',
@@ -580,13 +584,18 @@ export function sanitizeEvent(evt) {
     venue: evt.venue || 'Robotics Lab & Flight Cage, ABESEC',
     description: evt.description || evt.desc || '',
     image_url: imageUrl,
-    badge: evt.badge || category,
+    badge: cleanNull(evt.badge) || category,
     highlights: highlights,
-    is_past: !!evt.is_past,
+    is_past: Boolean(evt.is_past),
     registration_open: evt.registration_open !== false,
-    registration_url: evt.registration_url || '',
-    created_at: evt.created_at || new Date().toISOString()
+    registration_url: cleanNull(evt.registration_url)
   };
+
+  if (evt.id) sanitized.id = evt.id;
+  if (evt.created_at) sanitized.created_at = evt.created_at;
+  if (evt.isDemo) sanitized.isDemo = true;
+
+  return sanitized;
 }
 
 // Helper to retrieve/store in LocalStorage with data integrity checks
@@ -670,9 +679,17 @@ export const projectsService = {
     if (supabase) {
       try {
         const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
-        if (!error && data && data.length > 0) return data;
+        if (!error && data) {
+          setLocal('projects', data);
+          return data;
+        }
+        if (error) {
+          console.warn('Supabase projects fetch error:', error);
+          if (import.meta.env.PROD) throw error;
+        }
       } catch (err) {
-        console.warn('Supabase projects fetch failed, using local cache:', err);
+        console.warn('Supabase projects fetch failed:', err);
+        if (import.meta.env.PROD) throw err;
       }
     }
     return getLocal('projects', SEED_PROJECTS);
@@ -685,59 +702,111 @@ export const projectsService = {
   },
 
   async create(project) {
-    const newProj = {
-      id: 'proj-' + Date.now(),
-      created_at: new Date().toISOString(),
-      ...project
+    // Send ONLY real columns. Database generates id (uuid) and created_at.
+    const row = {
+      domain_id: cleanNull(project.domain_id),
+      title: project.title ? String(project.title).trim() : '',
+      description: project.description ? String(project.description).trim() : '',
+      image_url: cleanNull(project.image_url ? normalizeImageUrl(project.image_url) : null),
+      technologies: cleanArray(project.technologies),
+      team_members: cleanArray(project.team_members),
+      github_url: cleanNull(project.github_url),
+      demo_url: cleanNull(project.demo_url),
+      featured: Boolean(project.featured)
     };
+
     if (supabase) {
-      try {
-        const { data, error } = await supabase.from('projects').insert([project]).select().single();
-        if (!error && data) {
-          const list = [data, ...getLocal('projects', SEED_PROJECTS)];
-          setLocal('projects', list);
-          return data;
-        }
-      } catch (err) {
-        console.warn('Supabase project create error:', err);
+      const { data, error } = await supabase
+        .from('projects')
+        .insert(row)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase project create error:', error);
+        throw error;
+      }
+
+      if (data) {
+        const list = [data, ...getLocal('projects', SEED_PROJECTS).filter(p => p.id !== data.id)];
+        setLocal('projects', list);
+        return data;
       }
     }
-    const list = [newProj, ...getLocal('projects', SEED_PROJECTS)];
-    setLocal('projects', list);
-    return newProj;
+
+    if (import.meta.env.DEV) {
+      const fallbackProj = {
+        id: 'proj-' + Date.now(),
+        created_at: new Date().toISOString(),
+        isDemo: true,
+        ...row
+      };
+      const list = [fallbackProj, ...getLocal('projects', SEED_PROJECTS)];
+      setLocal('projects', list);
+      return fallbackProj;
+    }
+
+    throw new Error('Supabase client is not available');
   },
 
   async update(id, projectData) {
+    if (!id) {
+      throw new Error('Project ID is required for update');
+    }
+
+    const payload = {};
+    if (projectData.domain_id !== undefined) payload.domain_id = cleanNull(projectData.domain_id);
+    if (projectData.title !== undefined) payload.title = String(projectData.title).trim();
+    if (projectData.description !== undefined) payload.description = String(projectData.description).trim();
+    if (projectData.image_url !== undefined) payload.image_url = cleanNull(projectData.image_url ? normalizeImageUrl(projectData.image_url) : null);
+    if (projectData.technologies !== undefined) payload.technologies = cleanArray(projectData.technologies);
+    if (projectData.team_members !== undefined) payload.team_members = cleanArray(projectData.team_members);
+    if (projectData.github_url !== undefined) payload.github_url = cleanNull(projectData.github_url);
+    if (projectData.demo_url !== undefined) payload.demo_url = cleanNull(projectData.demo_url);
+    if (projectData.featured !== undefined) payload.featured = Boolean(projectData.featured);
+
     if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('projects')
-          .update(projectData)
-          .eq('id', id)
-          .select()
-          .single();
-        if (!error && data) {
-          const list = getLocal('projects', SEED_PROJECTS).map(p => (p.id === id ? { ...p, ...data } : p));
-          setLocal('projects', list);
-          return data;
-        }
-      } catch (err) {
-        console.warn('Supabase project update error:', err);
+      const { data, error } = await supabase
+        .from('projects')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase project update error:', error);
+        throw error;
+      }
+
+      if (data) {
+        const list = getLocal('projects', SEED_PROJECTS).map(p => (p.id === id ? { ...p, ...data } : p));
+        setLocal('projects', list);
+        return data;
       }
     }
-    const list = getLocal('projects', SEED_PROJECTS).map(p => (p.id === id ? { ...p, ...projectData } : p));
-    setLocal('projects', list);
-    return list.find(p => p.id === id);
+
+    if (import.meta.env.DEV) {
+      const list = getLocal('projects', SEED_PROJECTS).map(p => (p.id === id ? { ...p, ...payload } : p));
+      setLocal('projects', list);
+      return list.find(p => p.id === id) || { id, ...payload };
+    }
+
+    throw new Error('Supabase client is not available');
   },
 
   async delete(id) {
+    if (!id) {
+      throw new Error('Project ID is required for deletion');
+    }
+
     if (supabase) {
-      try {
-        await supabase.from('projects').delete().eq('id', id);
-      } catch (err) {
-        console.warn('Supabase project delete error:', err);
+      const { error } = await supabase.from('projects').delete().eq('id', id);
+      if (error) {
+        console.error('Supabase project delete error:', error);
+        throw error;
       }
     }
+
     const list = getLocal('projects', SEED_PROJECTS).filter(p => p.id !== id);
     setLocal('projects', list);
     return true;
@@ -750,11 +819,18 @@ export const eventsService = {
     if (supabase) {
       try {
         const { data, error } = await supabase.from('events').select('*').order('created_at', { ascending: false });
-        if (!error && Array.isArray(data) && data.length > 0) {
+        if (!error && Array.isArray(data)) {
           list = data;
+          setLocal('events', list);
+          return list.map(sanitizeEvent).filter(Boolean);
+        }
+        if (error) {
+          console.warn('Supabase events fetch error:', error);
+          if (import.meta.env.PROD) throw error;
         }
       } catch (err) {
         console.warn('Supabase events fetch failed, using local cache:', err);
+        if (import.meta.env.PROD) throw err;
       }
     }
     if (!list || list.length === 0) {
@@ -764,10 +840,8 @@ export const eventsService = {
       list = SEED_EVENTS;
       setLocal('events', SEED_EVENTS);
     }
-    // Clean and sanitize all events, heal stored cache so corrupted items never break the UI
     const sanitized = list.map(sanitizeEvent).filter(Boolean);
     const result = sanitized.length > 0 ? sanitized : SEED_EVENTS.map(sanitizeEvent);
-    // Self-heal localStorage with sanitized data
     setLocal('events', result);
     return result;
   },
@@ -779,65 +853,123 @@ export const eventsService = {
   },
 
   async create(event) {
-    const clean = sanitizeEvent(event);
-    const newEvent = {
-      ...clean,
-      id: clean.id.startsWith('event-') ? clean.id : 'event-' + Date.now(),
-      created_at: new Date().toISOString()
+    // Send ONLY real columns. Database generates id (uuid) and created_at.
+    const row = {
+      title: (event.title ? String(event.title).trim() : '') || 'Untitled Event',
+      category: (event.category ? String(event.category).trim() : '') || 'Workshop',
+      event_date: (event.event_date ? String(event.event_date).trim() : '') || 'Upcoming',
+      time: (event.time ? String(event.time).trim() : '') || '10:00 AM – 4:30 PM',
+      venue: (event.venue ? String(event.venue).trim() : '') || 'Robotics Lab & Flight Cage, ABESEC',
+      description: event.description ? String(event.description).trim() : '',
+      image_url: cleanNull(event.image_url ? normalizeImageUrl(event.image_url) : null),
+      badge: cleanNull(event.badge) || cleanNull(event.category) || 'Workshop',
+      highlights: cleanArray(event.highlights),
+      is_past: Boolean(event.is_past),
+      registration_open: event.registration_open !== false,
+      registration_url: cleanNull(event.registration_url)
     };
+
     if (supabase) {
-      try {
-        const { data, error } = await supabase.from('events').insert([newEvent]).select().single();
-        if (!error && data) {
-          const current = await this.getAll();
-          const list = [sanitizeEvent(data), ...current.filter(e => e.id !== data.id)];
-          setLocal('events', list);
-          return sanitizeEvent(data);
-        }
-      } catch (err) {
-        console.warn('Supabase event create error:', err);
+      const { data, error } = await supabase
+        .from('events')
+        .insert(row)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase event create error:', error);
+        throw error;
+      }
+
+      if (data) {
+        const sanitized = sanitizeEvent(data);
+        const current = await this.getAll();
+        const list = [sanitized, ...current.filter(e => e.id !== data.id)];
+        setLocal('events', list);
+        return sanitized;
       }
     }
-    const current = await this.getAll();
-    const list = [newEvent, ...current.filter(e => e.id !== newEvent.id)];
-    setLocal('events', list);
-    return newEvent;
+
+    if (import.meta.env.DEV) {
+      const fallbackEvent = {
+        id: 'event-' + Date.now(),
+        created_at: new Date().toISOString(),
+        isDemo: true,
+        ...row
+      };
+      const current = await this.getAll();
+      const list = [fallbackEvent, ...current];
+      setLocal('events', list);
+      return fallbackEvent;
+    }
+
+    throw new Error('Supabase client is not available');
   },
 
   async update(id, eventData) {
-    const clean = sanitizeEvent({ ...eventData, id });
+    if (!id) {
+      throw new Error('Event ID is required for update');
+    }
+
+    const payload = {};
+    if (eventData.title !== undefined) payload.title = String(eventData.title).trim();
+    if (eventData.category !== undefined) payload.category = String(eventData.category).trim();
+    if (eventData.event_date !== undefined) payload.event_date = String(eventData.event_date).trim();
+    if (eventData.time !== undefined) payload.time = String(eventData.time).trim();
+    if (eventData.venue !== undefined) payload.venue = String(eventData.venue).trim();
+    if (eventData.description !== undefined) payload.description = String(eventData.description).trim();
+    if (eventData.image_url !== undefined) payload.image_url = cleanNull(eventData.image_url ? normalizeImageUrl(eventData.image_url) : null);
+    if (eventData.badge !== undefined) payload.badge = cleanNull(eventData.badge);
+    if (eventData.highlights !== undefined) payload.highlights = cleanArray(eventData.highlights);
+    if (eventData.is_past !== undefined) payload.is_past = Boolean(eventData.is_past);
+    if (eventData.registration_open !== undefined) payload.registration_open = Boolean(eventData.registration_open);
+    if (eventData.registration_url !== undefined) payload.registration_url = cleanNull(eventData.registration_url);
+
     if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('events')
-          .update(clean)
-          .eq('id', id)
-          .select()
-          .single();
-        if (!error && data) {
-          const current = await this.getAll();
-          const list = current.map(e => (e.id === id ? sanitizeEvent(data) : e));
-          setLocal('events', list);
-          return sanitizeEvent(data);
-        }
-      } catch (err) {
-        console.warn('Supabase event update error, falling back to local:', err);
+      const { data, error } = await supabase
+        .from('events')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase event update error:', error);
+        throw error;
+      }
+
+      if (data) {
+        const sanitized = sanitizeEvent(data);
+        const current = await this.getAll();
+        const list = current.map(e => (e.id === id ? sanitized : e));
+        setLocal('events', list);
+        return sanitized;
       }
     }
-    const current = await this.getAll();
-    const list = current.map(e => (e.id === id ? { ...e, ...clean } : e));
-    setLocal('events', list);
-    return list.find(e => e.id === id) || clean;
+
+    if (import.meta.env.DEV) {
+      const current = await this.getAll();
+      const list = current.map(e => (e.id === id ? { ...e, ...payload } : e));
+      setLocal('events', list);
+      return list.find(e => e.id === id) || { id, ...payload };
+    }
+
+    throw new Error('Supabase client is not available');
   },
 
   async delete(id) {
+    if (!id) {
+      throw new Error('Event ID is required for deletion');
+    }
+
     if (supabase) {
-      try {
-        await supabase.from('events').delete().eq('id', id);
-      } catch (err) {
-        console.warn('Supabase event delete error:', err);
+      const { error } = await supabase.from('events').delete().eq('id', id);
+      if (error) {
+        console.error('Supabase event delete error:', error);
+        throw error;
       }
     }
+
     const current = await this.getAll();
     const list = current.filter(e => e.id !== id);
     setLocal('events', list);
@@ -932,68 +1064,147 @@ export const membersService = {
     if (supabase) {
       try {
         const { data, error } = await supabase.from('members').select('*').order('sort_order', { ascending: true });
-        if (!error && data && data.length > 0) return data;
+        if (!error && data) {
+          setLocal('members', data);
+          return data;
+        }
+        if (error) {
+          console.warn('Supabase members fetch error:', error);
+          if (import.meta.env.PROD) throw error;
+        }
       } catch (err) {
         console.warn('Supabase members fetch failed, using local cache:', err);
+        if (import.meta.env.PROD) throw err;
       }
     }
     return getLocal('members', SEED_MEMBERS);
   },
 
   async create(member) {
-    const newMem = {
-      id: 'mem-' + Date.now(),
-      created_at: new Date().toISOString(),
-      ...member
+    const validCategories = ['leadership', 'technical', 'management'];
+    const category = String(member.category || '').toLowerCase().trim();
+    if (!validCategories.includes(category)) {
+      throw new Error(`Invalid member category '${member.category}'. Must be one of: leadership, technical, management`);
+    }
+
+    // Send ONLY real columns. Database generates id (uuid) and created_at.
+    const row = {
+      name: member.name ? String(member.name).trim() : '',
+      role: member.role ? String(member.role).trim() : '',
+      designation: member.designation ? String(member.designation).trim() : '',
+      category: category,
+      department: member.department ? String(member.department).trim() : '',
+      domain_id: cleanNull(member.domain_id),
+      image_url: cleanNull(member.image_url ? normalizeImageUrl(member.image_url) : null),
+      badge: cleanNull(member.badge),
+      bio: cleanNull(member.bio),
+      github_url: cleanNull(member.github_url),
+      linkedin_url: cleanNull(member.linkedin_url),
+      sort_order: parseInt(member.sort_order ?? 100, 10) || 100
     };
+
     if (supabase) {
-      try {
-        const { data, error } = await supabase.from('members').insert([member]).select().single();
-        if (!error && data) {
-          const list = [...getLocal('members', SEED_MEMBERS), data];
-          setLocal('members', list);
-          return data;
-        }
-      } catch (err) {
-        console.warn('Supabase member create error:', err);
+      const { data, error } = await supabase
+        .from('members')
+        .insert(row)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase member create error:', error);
+        throw error;
+      }
+
+      if (data) {
+        const list = [...getLocal('members', SEED_MEMBERS).filter(m => m.id !== data.id), data];
+        setLocal('members', list);
+        return data;
       }
     }
-    const list = [...getLocal('members', SEED_MEMBERS), newMem];
-    setLocal('members', list);
-    return newMem;
+
+    if (import.meta.env.DEV) {
+      const fallbackMem = {
+        id: 'mem-' + Date.now(),
+        created_at: new Date().toISOString(),
+        isDemo: true,
+        ...row
+      };
+      const list = [...getLocal('members', SEED_MEMBERS), fallbackMem];
+      setLocal('members', list);
+      return fallbackMem;
+    }
+
+    throw new Error('Supabase client is not available');
   },
 
   async update(id, memberData) {
+    if (!id) {
+      throw new Error('Member ID is required for update');
+    }
+
+    const payload = {};
+    if (memberData.name !== undefined) payload.name = String(memberData.name).trim();
+    if (memberData.role !== undefined) payload.role = String(memberData.role).trim();
+    if (memberData.designation !== undefined) payload.designation = String(memberData.designation).trim();
+    if (memberData.category !== undefined) {
+      const validCategories = ['leadership', 'technical', 'management'];
+      const category = String(memberData.category || '').toLowerCase().trim();
+      if (!validCategories.includes(category)) {
+        throw new Error(`Invalid member category '${memberData.category}'. Must be one of: leadership, technical, management`);
+      }
+      payload.category = category;
+    }
+    if (memberData.department !== undefined) payload.department = String(memberData.department).trim();
+    if (memberData.domain_id !== undefined) payload.domain_id = cleanNull(memberData.domain_id);
+    if (memberData.image_url !== undefined) payload.image_url = cleanNull(memberData.image_url ? normalizeImageUrl(memberData.image_url) : null);
+    if (memberData.badge !== undefined) payload.badge = cleanNull(memberData.badge);
+    if (memberData.bio !== undefined) payload.bio = cleanNull(memberData.bio);
+    if (memberData.github_url !== undefined) payload.github_url = cleanNull(memberData.github_url);
+    if (memberData.linkedin_url !== undefined) payload.linkedin_url = cleanNull(memberData.linkedin_url);
+    if (memberData.sort_order !== undefined) payload.sort_order = parseInt(memberData.sort_order ?? 100, 10) || 100;
+
     if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('members')
-          .update(memberData)
-          .eq('id', id)
-          .select()
-          .single();
-        if (!error && data) {
-          const list = getLocal('members', SEED_MEMBERS).map(m => (m.id === id ? { ...m, ...data } : m));
-          setLocal('members', list);
-          return data;
-        }
-      } catch (err) {
-        console.warn('Supabase member update error:', err);
+      const { data, error } = await supabase
+        .from('members')
+        .update(payload)
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Supabase member update error:', error);
+        throw error;
+      }
+
+      if (data) {
+        const list = getLocal('members', SEED_MEMBERS).map(m => (m.id === id ? { ...m, ...data } : m));
+        setLocal('members', list);
+        return data;
       }
     }
-    const list = getLocal('members', SEED_MEMBERS).map(m => (m.id === id ? { ...m, ...memberData } : m));
-    setLocal('members', list);
-    return list.find(m => m.id === id);
+
+    if (import.meta.env.DEV) {
+      const list = getLocal('members', SEED_MEMBERS).map(m => (m.id === id ? { ...m, ...payload } : m));
+      setLocal('members', list);
+      return list.find(m => m.id === id) || { id, ...payload };
+    }
+
+    throw new Error('Supabase client is not available');
   },
 
   async delete(id) {
+    if (!id) {
+      throw new Error('Member ID is required for deletion');
+    }
+
     if (supabase) {
-      try {
-        await supabase.from('members').delete().eq('id', id);
-      } catch (err) {
-        console.warn('Supabase member delete error:', err);
+      const { error } = await supabase.from('members').delete().eq('id', id);
+      if (error) {
+        console.error('Supabase member delete error:', error);
+        throw error;
       }
     }
+
     const list = getLocal('members', SEED_MEMBERS).filter(m => m.id !== id);
     setLocal('members', list);
     return true;
