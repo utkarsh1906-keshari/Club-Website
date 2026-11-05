@@ -89,7 +89,7 @@ export default function AdminLogin({ onLoginSuccess }) {
               marginBottom: '1.25rem'
             }}>
               <Clock size={18} style={{ color: '#eab308', flexShrink: 0 }} />
-              <span>You were logged out because of inactivity.</span>
+              <span>You were logged out because of inactivity. Please log in again.</span>
             </div>
           )}
 

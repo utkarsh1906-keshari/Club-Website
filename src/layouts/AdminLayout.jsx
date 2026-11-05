@@ -24,8 +24,12 @@ export default function AdminLayout() {
   const { showWarning, remainingSeconds, stayLoggedIn } = useIdleLogout();
 
   const handleLogout = async () => {
-    await signOut();
-    navigate('/');
+    try {
+      await signOut();
+    } catch (err) {
+      console.warn('Sign out error:', err);
+    }
+    navigate('/admin');
   };
 
   const handleExitToSite = () => {
@@ -113,36 +117,23 @@ export default function AdminLayout() {
     <div className="admin-wrapper">
       {/* Inactivity Warning Banner */}
       {showWarning && (
-        <div style={{
-          position: 'fixed',
-          top: '1.25rem',
-          right: '1.25rem',
-          zIndex: 99999,
-          background: 'rgba(23, 23, 31, 0.98)',
-          backdropFilter: 'blur(12px)',
-          border: '1px solid #eab308',
-          borderRadius: '12px',
-          padding: '1rem 1.25rem',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(234, 179, 8, 0.2)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1rem',
-          maxWidth: '440px',
-          color: '#f8fafc'
-        }}>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#fbbf24', marginBottom: '0.2rem' }}>
+        <div 
+          role="alert"
+          aria-live="polite"
+          className="idle-warning-banner"
+        >
+          <div className="idle-warning-content">
+            <div className="idle-warning-title">
               Inactivity Timeout Warning
             </div>
-            <div style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
-              Your session will expire in <strong>{remainingSeconds}s</strong> due to inactivity.
+            <div className="idle-warning-text">
+              You will be logged out in <strong>{remainingSeconds}</strong> second{remainingSeconds === 1 ? '' : 's'} due to inactivity.
             </div>
           </div>
           <button
             type="button"
             onClick={stayLoggedIn}
-            className="btn btn-primary"
-            style={{ padding: '0.45rem 0.85rem', fontSize: '0.82rem', whiteSpace: 'nowrap' }}
+            className="btn btn-primary idle-warning-btn"
           >
             Stay logged in
           </button>
